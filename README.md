@@ -71,8 +71,25 @@ entering the daemon URL when prompted.
 
 You'll need this for pairing — a short Base64 string like `aBc1dEfg23h=`.
 
+**If your PSN profile is public:**
 The easiest source is **https://psn.flipscreen.games** — type your PSN
 online ID, copy the **Base64 Account ID**.
+
+**If your PSN profile is private:**
+Run the bundled OAuth helper, which authenticates *as you* and bypasses
+profile privacy entirely:
+
+```bash
+./get-account-id.sh
+```
+
+It opens a Sony PSN sign-in URL, you sign in, paste the redirect URL
+back, and it prints your Account ID. No third-party API, no profile
+toggling. Uses the same OAuth flow as `pyremoteplay`, `chiaki`, and
+`ps5-mqtt`.
+
+`install.sh` will offer to run this helper for you at the pairing step
+if you don't already have your Account ID.
 
 ### 3. Find your PS5's local IP
 
