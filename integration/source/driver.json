@@ -1,0 +1,38 @@
+{
+  "driver_id": "uc_intg_ps5_control_sbr",
+  "version": "0.4.0",
+  "min_core_api": "0.22.0",
+  "name": {
+    "en": "PS5 Control (SBR)"
+  },
+  "icon": "uc:tv",
+  "description": {
+    "en": "PlayStation 5 control via Remote Play daemon. Wake from rest, send to rest, full d-pad and face button navigation, app launching. Talks to a small Python service on the LAN that maintains a Remote Play session."
+  },
+  "developer": {
+    "name": "PS5 Control",
+    "email": "noreply@example.com"
+  },
+  "home_page": "",
+  "release_date": "2026-05-03",
+  "setup_data_schema": {
+    "title": {
+      "en": "PS5 Control setup"
+    },
+    "settings": [
+      {
+        "id": "info",
+        "label": {
+          "en": "Setup info"
+        },
+        "field": {
+          "label": {
+            "value": {
+              "en": "Enter the host:port of your ps5-control daemon (e.g. 10.0.0.50:8456). The daemon must be reachable from this Remote."
+            }
+          }
+        }
+      }
+    ]
+  }
+}

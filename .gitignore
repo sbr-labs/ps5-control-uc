@@ -1,0 +1,21 @@
+# Local config + secrets — must never be committed
+daemon/credentials.json
+daemon/.env
+daemon/daemon.log
+
+# Build artefacts
+integration/source/build_out/
+integration/source/pkg_root/
+integration/source/__pycache__/
+integration/source/src/__pycache__/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
