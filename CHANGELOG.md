@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.7] - 2026-05-08
+
+### Fixed
+- `pair.sh` `docker run` was missing the `-i` flag. After v0.4.6 split
+  the install step into a separate `docker build` and the registration
+  step into a `docker run ... ps5-control-pairing python -`, the
+  heredoc-piped script never reached the container's `python` because
+  `docker run` without `-i` doesn't forward stdin. Result: container
+  read empty stdin, exited 0 silently, no `credentials.json` written,
+  user got the inscrutable "Pairing failed — credentials.json not
+  created" with no upstream error to debug from. Verified by repro
+  with `python -` reading sys.exit(2) — without `-i` exits 0, with
+  `-i` exits 2 as expected.
+
 ## [0.4.6] - 2026-05-08
 
 ### Fixed

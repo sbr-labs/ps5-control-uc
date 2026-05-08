@@ -107,7 +107,10 @@ fi
 
 # Run registration — image is cached, so this is just the network step
 # plus our small Python script. Should complete in seconds.
-docker run --rm \
+# `-i` is REQUIRED here: without it docker doesn't forward stdin to the
+# container, so the heredoc-piped script never reaches python and the
+# container silently exits 0 with no credentials.json written.
+docker run --rm -i \
   --network host \
   -v "$(pwd):/work" \
   -w /work \
