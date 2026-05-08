@@ -61,22 +61,33 @@ def main() -> int:
         print(f"\nUnexpected response: {info!r}", file=sys.stderr)
         return 4
 
-    account_id = (
-        info.get("account_id")
-        or info.get("account_id_base64")
-        or info.get("user_id")
-    )
+    # pyremoteplay's register() expects the **base64** form of the Account
+    # ID. Sony's OAuth response carries it as `user_rpid`. Older versions
+    # of this script grabbed `account_id` / `user_id`, which are the
+    # **decimal** form — same value, wrong representation, and pairing
+    # then crashes. Prefer `user_rpid`; fall back to converting decimal
+    # locally if it's missing for any reason.
+    import base64
+    account_id = info.get("user_rpid") or info.get("account_id_base64")
+    if not account_id:
+        decimal_id = info.get("user_id") or info.get("account_id")
+        if decimal_id and str(decimal_id).isdigit():
+            account_id = base64.b64encode(
+                int(decimal_id).to_bytes(8, "little")
+            ).decode()
     if not account_id:
         print(f"\nCould not extract Account ID from response: {info}", file=sys.stderr)
         return 5
 
     print()
     print("=" * 64)
-    print(f" Your Account ID: {account_id}")
+    print(f" Your Account ID (base64): {account_id}")
     print("=" * 64)
     print()
-    print("Copy the Account ID above. install.sh will ask for it during")
-    print("Remote Play pairing.")
+    print("Copy the value above. install.sh will ask for it during Remote")
+    print("Play pairing. It looks like a short Base64 string ending in '='")
+    print("— that's correct. The 19-digit decimal form Sony also returns")
+    print("is NOT what pyremoteplay accepts.")
     print()
     return 0
 

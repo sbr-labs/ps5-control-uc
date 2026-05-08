@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-05-08
+
+### Fixed
+- `get-account-id.py` was printing the **decimal** form of the PSN
+  Account ID (e.g. `7067298559098XXXXXX`) instead of the **base64**
+  form (`aBc1dEfg23h=`). Sony's OAuth response carries the same value
+  in both representations — `user_id` is decimal, `user_rpid` is
+  base64 — and `pyremoteplay.register()` only accepts the base64 form.
+  The script was reading `account_id` / `user_id` first; now it reads
+  `user_rpid` first, with a fallback that converts decimal → base64
+  locally (`base64.b64encode(int(decimal).to_bytes(8, "little"))`) if
+  `user_rpid` is missing for any reason.
+- `pair.sh` is now forgiving: if the user pastes the 19-digit decimal
+  form of the Account ID (e.g. from an older `get-account-id.sh`
+  run, or from a Sony page that shows it that way), it auto-converts
+  to base64 before calling `pyremoteplay.register()` instead of
+  failing on the inscrutable error pyremoteplay would otherwise throw.
+
 ## [0.4.4] - 2026-05-08
 
 ### Fixed

@@ -39,6 +39,21 @@ if [[ -z "$ACCOUNT_ID" || -z "$PIN" ]]; then
   exit 1
 fi
 
+# Forgiving input: if the user pasted the 19-ish-digit decimal form of
+# their Account ID by mistake (Sony's OAuth response carries it in both
+# forms; older builds of get-account-id.sh printed the wrong one),
+# convert to base64 — pyremoteplay's register() only accepts base64.
+if [[ "$ACCOUNT_ID" =~ ^[0-9]+$ ]]; then
+  echo "Account ID is in decimal form — converting to base64..."
+  ACCOUNT_ID=$(python3 -c "import sys, base64; print(base64.b64encode(int(sys.argv[1]).to_bytes(8,'little')).decode())" "$ACCOUNT_ID" 2>/dev/null \
+            || docker run --rm python:3.12-slim python -c "import sys, base64; print(base64.b64encode(int(sys.argv[1]).to_bytes(8,'little')).decode())" "$ACCOUNT_ID")
+  if [[ -z "$ACCOUNT_ID" ]]; then
+    echo "Failed to convert decimal Account ID to base64." >&2
+    exit 1
+  fi
+  echo "Using Account ID (base64): $ACCOUNT_ID"
+fi
+
 # Run pyremoteplay's pairing flow in a one-shot container, write
 # credentials.json into the daemon dir.
 docker run --rm \
