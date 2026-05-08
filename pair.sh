@@ -46,6 +46,15 @@ docker run --rm \
   -v "$(pwd):/work" \
   -w /work \
   python:3.12-slim bash -lc "
+    set -e
+    # pyremoteplay deps (netifaces, cffi, pycryptodomex) ship no prebuilt
+    # wheels for armv7l (Raspberry Pi 32-bit), so pip falls back to building
+    # from source. python:3.12-slim has no compiler — install the toolchain
+    # before pip. On x86_64/arm64 wheels exist and the compile step is
+    # skipped; the apt step is then wasted ~30s but harmless.
+    apt-get update -qq
+    apt-get install -y --no-install-recommends \
+      gcc libc6-dev libffi-dev libssl-dev >/dev/null
     pip install --quiet pyremoteplay 'pyee<12'
     python - <<PYEOF
 import json, sys

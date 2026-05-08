@@ -17,4 +17,13 @@ docker run --rm -it \
   -v "$(pwd)/get-account-id.py:/work/get-account-id.py:ro" \
   -w /work \
   python:3.12-slim \
-  bash -lc 'pip install --quiet pyremoteplay "pyee<12" 2>&1 | tail -1; python3 get-account-id.py'
+  bash -lc '
+    set -e
+    # pyremoteplay needs a compile toolchain on armv7l (no PyPI wheels for
+    # netifaces/cffi/pycryptodomex). Install build deps before pip.
+    apt-get update -qq
+    apt-get install -y --no-install-recommends \
+      gcc libc6-dev libffi-dev libssl-dev >/dev/null
+    pip install --quiet pyremoteplay "pyee<12" 2>&1 | tail -1
+    python3 get-account-id.py
+  '

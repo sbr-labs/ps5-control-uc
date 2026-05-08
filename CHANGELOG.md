@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-05-08
+
+### Fixed
+- Pairing and OAuth helper failed on Raspberry Pi OS Bullseye (armv7l, 32-bit
+  ARM) with `error: command 'gcc' failed: No such file or directory`. The
+  one-shot `python:3.12-slim` containers used by `pair.sh` and
+  `get-account-id.sh` had no compiler, and PyPI ships no armv7l wheels for
+  `netifaces` / `cffi` / `pycryptodomex`, so pip fell back to source builds
+  that immediately broke. Both scripts now `apt-get install gcc libc6-dev
+  libffi-dev libssl-dev` inside the container before `pip install`.
+- `daemon/Dockerfile` now also installs `libffi-dev` + `libssl-dev` so the
+  daemon image builds cleanly on armv7l (cffi needs `ffi.h`).
+
 ## [0.4.1] - 2026-05-06
 
 ### Added
