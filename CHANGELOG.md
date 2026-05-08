@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.12] - 2026-05-08
+
+### Changed
+- `pair.sh`'s final `chmod 600 credentials.json` is now best-effort
+  with sudo fallback and a friendly explanation if it can't run.
+  Previously it printed `chmod: changing permissions of
+  'credentials.json': Operation not permitted` after a *successful*
+  pairing because Docker creates the file as root (via the bind
+  mount in the registration container) and the host's shell user
+  can't `chmod` a root-owned file. The chmod is purely
+  defence-in-depth — the daemon reads the file as root regardless,
+  so functionality is unaffected — but the error looked alarming
+  next to the success message. Now it tries `chmod`, falls back to
+  `sudo chmod`, and otherwise prints a one-line note instead of an
+  error.
+
 ## [0.4.11] - 2026-05-08
 
 ### Fixed

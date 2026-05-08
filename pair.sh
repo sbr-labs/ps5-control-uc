@@ -204,5 +204,20 @@ if [[ ! -f credentials.json ]]; then
   exit 1
 fi
 
-chmod 600 credentials.json
-ok "credentials.json saved."
+# chmod is best-effort — credentials.json is created by Docker as
+# root (via the bind mount in the registration container), so the
+# host's shell user often can't chmod it. The daemon container reads
+# the file as root regardless, so file permissions don't affect
+# functionality. This is just defence-in-depth against other local
+# users reading the file. Try chmod, fall back to sudo, otherwise
+# print a quiet note instead of a scary "Operation not permitted".
+if chmod 600 credentials.json 2>/dev/null; then
+  ok "credentials.json saved (mode 600)."
+elif command -v sudo >/dev/null 2>&1 && sudo chmod 600 credentials.json 2>/dev/null; then
+  ok "credentials.json saved (mode 600 via sudo)."
+else
+  ok "credentials.json saved."
+  echo "    (chmod 600 skipped — file is owned by root from the Docker"
+  echo "     bind-mount; daemon reads it fine. Harmless on single-user"
+  echo "     hosts. To restrict on multi-user hosts: sudo chmod 600 $(pwd)/credentials.json)"
+fi
