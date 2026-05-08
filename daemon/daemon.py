@@ -72,6 +72,41 @@ PREWARM = os.environ.get("PREWARM", "1") == "1"
 # Health check interval to keep session alive + detect PS5 going to rest.
 KEEPALIVE_S = int(os.environ.get("KEEPALIVE", "30"))
 
+# DRM-protected streaming apps that refuse to play while a Remote Play
+# session is connected to the PS5. When one of these apps is in the
+# foreground, the daemon tears down the RP session and pauses
+# auto-reconnect so the user can actually watch. Comma-separated env
+# override: DRM_APPS="Netflix,Sky Go,My Custom App". Match is
+# case-insensitive substring.
+_DEFAULT_DRM_APPS = (
+    "Netflix",
+    "Disney+", "Disney Plus",
+    "Apple TV", "Apple TV+",
+    "Prime Video", "Amazon Prime Video",
+    "HBO Max", "Max",
+    "BBC iPlayer",
+    "ITVX", "ITV Hub",
+    "NOW", "NOW TV",
+    "Sky Go", "Sky Stream", "Sky Sports", "Sky News",
+    "YouTube", "YouTube TV",
+    "Crunchyroll",
+    "Paramount+", "Paramount Plus",
+    "Discovery+", "Discovery Plus",
+    "Twitch",
+    "Spotify",
+    "Plex", "Jellyfin", "Emby",
+)
+DRM_APPS = tuple(
+    a.strip()
+    for a in (
+        os.environ.get("DRM_APPS")
+        or ",".join(_DEFAULT_DRM_APPS)
+    ).split(",")
+    if a.strip()
+)
+DRM_PAUSE_S = int(os.environ.get("DRM_PAUSE_S", "300"))
+DRM_CHECK_S = int(os.environ.get("DRM_CHECK_S", "5"))
+
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -156,6 +191,16 @@ class PS5Controller:
     def app_id(self) -> Optional[str]:
         s = self.device.status or {}
         return s.get("running-app-titleid") or None
+
+    @property
+    def is_drm_app(self) -> bool:
+        """True if the foreground app is a DRM-protected streaming app
+        that won't play while a Remote Play session is connected."""
+        name = self.app_name
+        if not name:
+            return False
+        n = name.lower()
+        return any(d.lower() in n or n in d.lower() for d in DRM_APPS)
 
     @property
     def app_image(self) -> Optional[str]:
@@ -524,6 +569,40 @@ def make_app(controller: PS5Controller) -> web.Application:
 
 # ---------- Main ----------
 
+async def drm_watcher_loop(controller: "PS5Controller") -> None:
+    """Background task that watches the foreground app and tears down
+    the Remote Play session when a DRM-protected streaming app is open
+    (Netflix, HBO Max, Disney+, NOW, BBC iPlayer, etc.). Those apps
+    refuse to play while an RP session is connected to the PS5. After
+    teardown we set _pause_until so button presses won't auto-reconnect
+    until the user explicitly hits /reconnect or switches app."""
+    last_logged: Optional[str] = None
+    while True:
+        try:
+            controller.refresh_status()
+            if controller.is_on and controller.is_drm_app:
+                name = controller.app_name
+                now = asyncio.get_event_loop().time()
+                # Always extend the pause while the DRM app stays in focus
+                # so a button press doesn't sneak a reconnect mid-stream.
+                controller._pause_until = now + DRM_PAUSE_S
+                if controller.has_session:
+                    log.info("drm_watcher: %s detected — disconnecting session", name)
+                    await controller.disconnect()
+                if last_logged != name:
+                    log.info("drm_watcher: paused for %s (use Remote 3 'reconnect' "
+                             "or DualSense to control PS5)", name)
+                    last_logged = name
+            else:
+                if last_logged is not None:
+                    log.info("drm_watcher: foreground no longer DRM — clearing pause")
+                    controller._pause_until = 0.0
+                    last_logged = None
+        except Exception:
+            log.exception("drm_watcher error")
+        await asyncio.sleep(DRM_CHECK_S)
+
+
 async def keepalive_loop(controller: "PS5Controller") -> None:
     """Background task that:
     - Refreshes DDP status (so /state is fresh and app sensor updates)
@@ -586,6 +665,7 @@ async def amain() -> None:
             log.exception("prewarm check error")
 
     keepalive_task = asyncio.create_task(keepalive_loop(controller))
+    drm_task = asyncio.create_task(drm_watcher_loop(controller))
 
     stop = asyncio.Event()
     loop = asyncio.get_event_loop()
@@ -595,6 +675,7 @@ async def amain() -> None:
 
     log.info("Shutting down")
     keepalive_task.cancel()
+    drm_task.cancel()
     await controller.disconnect()
     await runner.cleanup()
 

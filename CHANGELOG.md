@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.24] - 2026-05-09
+
+### Added
+- **Streaming-app compatibility.** When a DRM-protected streaming
+  app (Netflix, Disney+, HBO Max / Max, Prime Video, NOW, BBC iPlayer,
+  ITVX, Apple TV+, Sky Go / Sky Stream, YouTube, Paramount+, Discovery+,
+  Twitch, Spotify, Plex / Jellyfin / Emby, etc.) is opened on the PS5,
+  the daemon now automatically tears down the Remote Play session and
+  pauses auto-reconnect. Those apps refuse to play while an RP session
+  is connected; this restores playback without needing to manually call
+  `/disconnect`. When the user closes the app or switches back to a
+  game, the pause clears and the next button press re-establishes the
+  session as usual.
+- New env knobs (defaults work for most users):
+  - `DRM_APPS` — comma-separated list to override / extend the DRM
+    app match list (case-insensitive substring match).
+  - `DRM_PAUSE_S` — how long the pause lasts after a DRM app is seen
+    (default `300` s; refreshed every check cycle while the app stays
+    in foreground).
+  - `DRM_CHECK_S` — how often the watcher polls the foreground app
+    (default `5` s).
+
 ## [0.4.23] - 2026-05-08
 
 ### Changed
