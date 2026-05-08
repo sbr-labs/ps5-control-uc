@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2026-05-08
+
+### Changed
+- README install section rewritten as a beginner-friendly step-by-step
+  walkthrough. Calls out the slow first-time `pip install` on 32-bit
+  Raspberry Pi explicitly (5–10 min while pip compiles
+  netifaces/cffi/pycryptodomex from source) so users don't think the
+  installer is hung.
+- New troubleshooting entry for "install stuck on `pip install`" and
+  for `update.sh` failing to fast-forward after a remote force-push.
+
+### Fixed
+- `update.sh` now detects when the remote `main` history has been
+  rewritten (force-push) and resets the local branch to `origin/main`
+  automatically instead of bailing on `git pull --ff-only`. Local
+  edits were already stashed earlier in the script, and
+  `credentials.json` + `.env` are gitignored, so the reset is safe.
+
 ## [0.4.2] - 2026-05-08
 
 ### Fixed

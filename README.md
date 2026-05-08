@@ -36,86 +36,113 @@ The daemon host can be any Linux machine with Docker — Raspberry Pi, NAS,
 old laptop, mini-PC. It just needs to stay on while you want PS5 control
 from the remote.
 
-## Quick start
+## Install — step by step
 
-```bash
-git clone <this-repo>
-cd <this-repo>
-./install.sh
-```
+> **How long it takes:** ~5 minutes on a Mac / Intel Linux box / 64-bit
+> ARM. **10–15 minutes on a 32-bit Raspberry Pi** (Pi 3, Pi 4 with the
+> 32-bit Bullseye/Bookworm image, or any other `armv7l` host). The Pi
+> has to compile a few Python packages from source — that's expected,
+> just leave it running.
 
-`install.sh` will:
-1. Verify Docker is installed
-2. Ask for your PS5's local IP
-3. Walk you through Remote Play pairing (your PSN Account ID + 8-digit PIN
-   from the PS5 screen)
-4. Build the daemon container and start it
-5. Print the daemon's URL — you'll paste this into the Remote 3 setup
+### Before you start — gather these 3 things
 
-Then upload `integration/ps5-uc-integration.tar.gz` to your Remote 3
-(Settings → Integrations → Upload custom integration) and run setup,
-entering the daemon URL when prompted.
+**1. Your PS5's local IP address.**
+On the PS5: **Settings → Network → View Connection Status → IP Address**.
+Looks like `192.168.x.x`.
 
-## Detailed setup walkthrough
+**2. Your PSN Account ID** (a short Base64 string like `aBc1dEfg23h=`).
+- **If your PSN profile is public** — paste your PSN online ID into
+  [psn.flipscreen.games](https://psn.flipscreen.games) and copy the
+  *Base64 Account ID* it shows.
+- **If your PSN profile is private** — the installer can fetch it for
+  you via Sony's OAuth (it'll ask). Or run `./get-account-id.sh` first
+  to grab it on its own.
 
-### 1. Enable Remote Play on the PS5
+**3. A Linux/Mac box with Docker** that stays on (Pi, NAS, mini-PC, old
+laptop — anything). Test by running `docker --version` and
+`docker compose version` — both should print a version. If not, follow
+[Docker's install guide](https://docs.docker.com/engine/install/) first.
 
-- **Settings → System → Remote Play → Enable Remote Play**
+### One-time PS5 setup (do these once, before installing)
+
+Enable Remote Play — that's the protocol the daemon talks to the PS5 over:
+
+- **Settings → System → Remote Play → Enable Remote Play** → ON
 - **Settings → Users and Accounts → Other → Console Sharing and Offline
-  Play → Enable**
-- **Settings → System → Power Saving → Features Available in Rest Mode
-  → Stay Connected to the Internet** + **Enable Turning On PS5 from
-  Network** — both ON
+  Play** → Enable
+- **Settings → System → Power Saving → Features Available in Rest Mode**
+  → turn on **both** *Stay Connected to the Internet* and *Enable
+  Turning On PS5 from Network*
 
-### 2. Find your PSN Account ID
+### Install steps
 
-You'll need this for pairing — a short Base64 string like `aBc1dEfg23h=`.
-
-**If your PSN profile is public:**
-The easiest source is **https://psn.flipscreen.games** — type your PSN
-online ID, copy the **Base64 Account ID**.
-
-**If your PSN profile is private:**
-Run the bundled OAuth helper, which authenticates *as you* and bypasses
-profile privacy entirely:
-
+**1. Clone the repo and enter the folder.**
 ```bash
-./get-account-id.sh
+git clone https://github.com/sbr-labs/ps5-control-uc.git
+cd ps5-control-uc
 ```
 
-It opens a Sony PSN sign-in URL, you sign in, paste the redirect URL
-back, and it prints your Account ID. No third-party API, no profile
-toggling. Uses the same OAuth flow as `pyremoteplay`, `chiaki`, and
-`ps5-mqtt`.
+**2. Generate an 8-digit pairing PIN on the PS5 — *right before* step 3.**
+On the PS5: **Settings → System → Remote Play → Link Device**. The PIN
+is valid for ~5 minutes only, so don't do this hours ahead.
 
-`install.sh` will offer to run this helper for you at the pairing step
-if you don't already have your Account ID.
-
-### 3. Find your PS5's local IP
-
-PS5: **Settings → Network → View Connection Status → IP Address**.
-
-### 4. Run the installer
-
+**3. Run the installer.**
 ```bash
 ./install.sh
 ```
 
-When the script asks for the pairing PIN, generate one on your PS5 at
-**Settings → System → Remote Play → Link Device**. The PIN is valid for
-~5 minutes.
+**4. Answer the prompts (in order):**
 
-When the installer finishes it prints the daemon URL — note this down.
+| Prompt | What to type |
+|---|---|
+| `PS5 IP:` | The IP from "Before you start" step 1 |
+| `Need to look up your Account ID via OAuth first? (y/N):` | `y` if your PSN profile is private; `N` if you already have your Account ID |
+| `Press Enter when ready to pair...` | Press Enter |
+| `PSN Account ID (Base64):` | Paste the Base64 string |
+| `8-digit pairing PIN from PS5:` | Type the digits showing on the PS5 screen |
 
-### 5. Upload the integration
+**5. Wait. Here's what each stage looks like:**
 
-In the Remote 3 web configurator: **Settings → Integrations → Upload
-custom integration** → pick `integration/ps5-uc-integration.tar.gz`.
+- `apt-get install ... gcc libc6-dev ...` — installing build tools
+  inside the pairing container (~30 seconds).
+- **`pip install --quiet pyremoteplay...`** — looks like nothing's
+  happening for several minutes. **It is working** — pip is compiling
+  Python packages (`netifaces`, `cffi`, `pycryptodomex`) from source.
+  - On Mac / Intel Linux / 64-bit ARM: ~30 seconds.
+  - On a 32-bit Raspberry Pi: **5–10 minutes**. Don't kill it.
+- `credentials.json written.` ✅ pairing succeeded.
+- `Building daemon container...` — building the daemon Docker image
+  (another ~1–3 minutes; ~5 minutes on a Pi).
+- `Daemon running.` ✅ done.
 
-### 6. Configure the integration
+At the end the script prints:
 
-Run setup for the new "PS5 Control" integration. When asked for the
-daemon URL, paste the one from step 4 (e.g. `10.0.0.5:8456`). Done.
+```
+Daemon is listening on:    192.168.1.50:8456
+```
+
+**Write that address down** — you'll paste it into the Remote 3 in the
+next section.
+
+### Hook it up to the Remote 3
+
+1. Open the Remote 3 web configurator in a browser (the address is on
+   the Remote: **Settings → About → Web configurator**).
+2. **Settings → Integrations → Upload custom integration** → pick
+   `integration/ps5-uc-integration.tar.gz` from the repo you cloned.
+3. After the upload completes, run setup for the new "PS5 Control"
+   integration. When it asks for the **daemon URL / host**, paste the
+   address from the install step (e.g. `192.168.1.50:8456`).
+4. Done — press a button on the remote and the PS5 should respond.
+
+### Quick sanity check
+
+From the daemon machine:
+```bash
+curl http://localhost:8456/health
+```
+A JSON response means the daemon is live. The only thing left at that
+point is the Remote 3 upload above.
 
 ## Day-to-day controls
 
@@ -162,12 +189,31 @@ the Remote 3.
 
 ## Troubleshooting
 
+**Install seems stuck on `pip install --quiet pyremoteplay...`.** It
+isn't — pip is compiling C-extension packages from source because there
+are no prebuilt wheels for your CPU architecture (this is the normal
+case on a 32-bit Raspberry Pi). Expect 5–10 minutes on Pi, 30s on
+x86_64 / 64-bit ARM. Don't kill it. If it's been more than 15 minutes,
+check `top` — if `cc1` or `gcc` is still using CPU, leave it.
+
 **Pairing fails with "Could not reach PS5".** PS5 must be powered on (not
 in rest mode) for the initial pairing. After pairing succeeds, the daemon
 can wake it from rest.
 
 **PIN keeps expiring.** Generate a fresh one on the PS5 immediately
 before running `install.sh` — PINs are valid ~5 minutes.
+
+**`./update.sh` says "Not possible to fast-forward" or refuses to pull.**
+The remote `main` branch was force-pushed (e.g. to clean up history).
+`update.sh` v0.4.3+ recovers automatically. If you're on an older
+checkout, run:
+```bash
+git fetch origin
+git reset --hard origin/main
+./install.sh
+```
+Your `daemon/credentials.json` and `daemon/.env` are gitignored and
+won't be touched.
 
 **"Driver not connected" after upload.** Restart the Remote 3 once after
 the first upload (Settings → Power → Restart). UC's integration list

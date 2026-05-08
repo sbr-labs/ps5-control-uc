@@ -44,7 +44,19 @@ say "Pulling latest from GitHub..."
 git fetch origin
 DEFAULT_BRANCH=$(git remote show origin | sed -n 's/.*HEAD branch: //p')
 DEFAULT_BRANCH=${DEFAULT_BRANCH:-main}
-git pull --ff-only origin "$DEFAULT_BRANCH"
+
+# If origin's history was rewritten (force-push) the local branch can't
+# fast-forward. Detect by checking whether the local HEAD is still an
+# ancestor of origin/<default>; if not, reset hard. Local edits were
+# already stashed in step 3, and credentials.json + .env are gitignored,
+# so reset --hard is safe.
+if ! git merge-base --is-ancestor HEAD "origin/${DEFAULT_BRANCH}"; then
+  warn "Remote history was rewritten — resetting local branch to origin/${DEFAULT_BRANCH}."
+  git checkout "$DEFAULT_BRANCH" 2>/dev/null || git checkout -B "$DEFAULT_BRANCH" "origin/${DEFAULT_BRANCH}"
+  git reset --hard "origin/${DEFAULT_BRANCH}"
+else
+  git pull --ff-only origin "$DEFAULT_BRANCH"
+fi
 
 NEW_REV=$(git rev-parse HEAD)
 if [[ "$PREV_REV" == "$NEW_REV" ]]; then
