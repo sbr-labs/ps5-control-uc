@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2026-05-08
+
+### Fixed
+- Integration tarball was rejected by the UC Remote 3 firmware with
+  *"Invalid archive, missing data in archive, or contained metadata
+  cannot be read"* (German: *"Ungültiges Archiv, fehlende Daten im
+  Archiv oder enthaltene Metadaten können nicht gelesen werden"*).
+  Cause: `driver.json` shipped with `"home_page": ""` (empty string),
+  which fails the firmware's URL-format validation on the integration
+  manifest. Set to `https://github.com/sbr-labs/ps5-control-uc`.
+- `driver.json` `version` and `release_date` were stuck at `0.4.0` /
+  `2026-05-03` from the initial release; now match the package
+  version + ship date.
+
+### Added
+- German translations (`"de"` entries) for `name`, `description`,
+  `setup_data_schema.title`, and the setup info label. The UC Remote 3
+  firmware picks the user's locale automatically — German users now
+  see the integration with localised strings instead of falling back
+  to the English ones.
+
 ## [0.4.7] - 2026-05-08
 
 ### Fixed

@@ -1,34 +1,39 @@
 {
   "driver_id": "uc_intg_ps5_control_sbr",
-  "version": "0.4.0",
+  "version": "0.4.8",
   "min_core_api": "0.22.0",
   "name": {
-    "en": "PS5 Control (SBR)"
+    "en": "PS5 Control (SBR)",
+    "de": "PS5 Steuerung (SBR)"
   },
   "icon": "uc:tv",
   "description": {
-    "en": "PlayStation 5 control via Remote Play daemon. Wake from rest, send to rest, full d-pad and face button navigation, app launching. Talks to a small Python service on the LAN that maintains a Remote Play session."
+    "en": "PlayStation 5 control via Remote Play daemon. Wake from rest, send to rest, full d-pad and face button navigation, app launching. Talks to a small Python service on the LAN that maintains a Remote Play session.",
+    "de": "PlayStation 5 Steuerung über einen Remote-Play-Daemon. Aufwecken aus dem Ruhezustand, in den Ruhezustand schalten, volle D-Pad- und Tastennavigation, App-Start. Kommuniziert mit einem kleinen Python-Dienst im LAN, der eine Remote-Play-Sitzung aufrechterhält."
   },
   "developer": {
-    "name": "PS5 Control",
+    "name": "sbr-labs",
     "email": "noreply@example.com"
   },
-  "home_page": "",
-  "release_date": "2026-05-03",
+  "home_page": "https://github.com/sbr-labs/ps5-control-uc",
+  "release_date": "2026-05-08",
   "setup_data_schema": {
     "title": {
-      "en": "PS5 Control setup"
+      "en": "PS5 Control setup",
+      "de": "PS5 Control Einrichtung"
     },
     "settings": [
       {
         "id": "info",
         "label": {
-          "en": "Setup info"
+          "en": "Setup info",
+          "de": "Hinweis"
         },
         "field": {
           "label": {
             "value": {
-              "en": "Enter the host:port of your ps5-control daemon (e.g. 10.0.0.50:8456). The daemon must be reachable from this Remote."
+              "en": "Enter the host:port of your ps5-control daemon (e.g. 10.0.0.50:8456). The daemon must be reachable from this Remote.",
+              "de": "Gib host:port deines ps5-control Daemons ein (z. B. 10.0.0.50:8456). Der Daemon muss von dieser Fernbedienung erreichbar sein."
             }
           }
         }
