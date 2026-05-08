@@ -433,8 +433,67 @@ def make_app(controller: PS5Controller) -> web.Application:
     async def handle_health(req: web.Request) -> web.Response:
         return web.json_response({"ok": True, "host": controller.host})
 
+    async def handle_index(req: web.Request) -> web.Response:
+        """Small status + quick-start page.
+
+        Useful for HA add-on users (HA renders this as the add-on's "Open Web UI"
+        button target) and standalone Docker users who type the daemon URL into
+        a browser to confirm it's alive.
+        """
+        host_header = req.headers.get("Host", f"{LISTEN_HOST}:{LISTEN_PORT}")
+        ps5 = PS5_HOST or "&lt;not configured&gt;"
+        # If this handler is responding, the daemon is alive — no need to probe.
+        status_text = f"✅ Daemon running — listening on <code>{host_header}</code>, PS5 at <code>{ps5}</code>"
+        html = (
+            "<!DOCTYPE html>\n"
+            "<html lang=\"en\"><head><meta charset=\"UTF-8\">"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+            "<title>PS5 Control daemon</title>"
+            "<style>"
+            "body{font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;"
+            "max-width:720px;margin:2rem auto;padding:0 1rem;line-height:1.55;color:#1a1a1a}"
+            "h1{font-size:1.7rem;margin-bottom:0.2rem}"
+            "h2{font-size:1.15rem;margin-top:2rem}"
+            ".status{padding:0.9rem 1rem;border-radius:8px;margin:1rem 0;background:#e8f6e8;border-left:4px solid #2e8b2e}"
+            "code{background:#f1f1f1;padding:2px 6px;border-radius:4px;"
+            "font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.92em}"
+            ".dl{display:inline-block;background:#0066ff;color:#fff;padding:0.7rem 1.2rem;"
+            "border-radius:6px;text-decoration:none;font-weight:600;margin:0.4rem 0}"
+            ".dl:hover{background:#0050cc}"
+            "ol{padding-left:1.4rem}li{margin:0.45rem 0}"
+            "footer{margin-top:2.5rem;font-size:0.85em;color:#666;border-top:1px solid #eee;padding-top:1rem}"
+            "</style></head><body>"
+            "<h1>🎮 PS5 Control daemon</h1>"
+            f"<div class=\"status\">{status_text}</div>"
+            "<h2>Connect your Unfolded Circle Remote 3</h2>"
+            "<ol>"
+            "<li>Download the integration tarball: "
+            "<a class=\"dl\" href=\"https://github.com/sbr-labs/ps5-control-uc/releases/latest/download/ps5-uc-integration.tar.gz\">"
+            "📥 Download UC Remote 3 integration</a></li>"
+            "<li>In the Remote 3 web configurator: <strong>Settings → Integrations → Upload custom integration</strong>, "
+            "pick the tarball you just downloaded.</li>"
+            "<li>Run setup for the new <strong>PS5 Control (SBR)</strong> integration. "
+            f"When asked for the daemon host, type: <code>{host_header}</code></li>"
+            "<li>Done — buttons on the Remote 3 should drive your PS5.</li>"
+            "</ol>"
+            "<h2>HTTP API (for HA scripts, voice intents, etc.)</h2>"
+            "<ul>"
+            "<li><code>POST /wakeup</code> — wake from rest</li>"
+            "<li><code>POST /standby</code> — send to rest</li>"
+            "<li><code>POST /button</code> with body <code>{\"button\":\"PS\",\"action\":\"tap\"}</code></li>"
+            "<li><code>GET /state</code> — current power, app, session</li>"
+            "<li><code>GET /health</code> — daemon liveness probe</li>"
+            "</ul>"
+            "<footer>Source: "
+            "<a href=\"https://github.com/sbr-labs/ps5-control-uc\">sbr-labs/ps5-control-uc</a> · "
+            "HA add-on: <a href=\"https://github.com/sbr-labs/ha-addons\">sbr-labs/ha-addons</a>"
+            "</footer></body></html>"
+        )
+        return web.Response(text=html, content_type="text/html")
+
     app = web.Application()
     app.on_response_prepare.append(_on_response_prepare)
+    app.router.add_get("/",            handle_index)
     app.router.add_post("/button",     handle_button)
     app.router.add_post("/wakeup",     handle_wakeup)
     app.router.add_post("/standby",    handle_standby)

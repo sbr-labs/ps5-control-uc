@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.17] - 2026-05-08
+
+### Added
+- Daemon now serves a small status + quick-start page at `GET /` —
+  visible in any browser pointed at the daemon's URL. Shows live
+  status (host:port the user reached the daemon at, PS5 IP it's
+  configured for), a one-click download link for the UC Remote 3
+  integration tarball, and a prefilled `<host>:8456` daemon URL the
+  user copies into the Remote 3 setup. Saves manual googling of the
+  GitHub release URL.
+- Used by the HA add-on's "Open Web UI" button (HA reads the
+  `webui:` directive in `config.yaml` and surfaces a button in the
+  add-on UI that opens this page in a new tab).
+
 ## [0.4.16] - 2026-05-08
 
 ### Added
