@@ -28,12 +28,37 @@ cd "$(dirname "$0")/daemon"
 # directory — and Python's `open('credentials.json', 'w')` then crashes
 # with `IsADirectoryError`. Detect and clean up before pairing.
 if [[ -d credentials.json ]]; then
-  echo "==> Removing stale credentials.json directory (created by docker compose up before pairing succeeded)..."
-  if docker compose ps --status=running --quiet 2>/dev/null | grep -q .; then
-    echo "    Bringing daemon down so we can remove the bind-mount source..."
-    docker compose down >/dev/null 2>&1 || true
+  echo "==> credentials.json is a directory (left over from a failed install)."
+
+  # Always bring the daemon down — `docker compose ps --status=running`
+  # misses containers in 'restarting' state (a crash loop with
+  # restart: unless-stopped will re-mount the directory between every
+  # crash, defeating cleanup). Unconditional `docker compose down` is
+  # idempotent: no-op if nothing is up.
+  echo "    Stopping daemon (releases the bind-mount)..."
+  docker compose down --remove-orphans --timeout 5 >/dev/null 2>&1 || true
+
+  # Try regular rm, fall back to sudo if Docker created the dir
+  # root-owned (common on rootful Docker daemons running as root).
+  echo "    Removing the empty directory..."
+  if ! rm -rf credentials.json 2>/dev/null; then
+    if command -v sudo >/dev/null 2>&1; then
+      sudo rm -rf credentials.json
+    fi
   fi
-  rm -rf credentials.json
+
+  # Verify cleanup actually worked. If it didn't, give the user the
+  # exact one-liner to fix it manually instead of failing later in the
+  # registration step with the same IsADirectoryError.
+  if [[ -e credentials.json ]]; then
+    echo "ERROR: could not remove credentials.json — still exists after cleanup." >&2
+    echo "       Run this from the daemon dir, then re-run ./pair.sh:" >&2
+    echo "         cd $(pwd)" >&2
+    echo "         docker compose down" >&2
+    echo "         sudo rm -rf credentials.json" >&2
+    exit 1
+  fi
+  echo "    ✓ Cleaned."
 fi
 
 CYAN="\033[1;36m"; GRN="\033[1;32m"; YEL="\033[1;33m"; OFF="\033[0m"

@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.10] - 2026-05-08
+
+### Fixed
+- v0.4.9's `credentials.json`-directory cleanup didn't always work.
+  Two failures uncovered by the tester:
+  1. `docker compose ps --status=running --quiet` misses containers
+     in `restarting` state — when the daemon is in a crash loop
+     (`restart: unless-stopped` keeps respawning it after each
+     `IsADirectoryError`), it spends most of its time in the
+     "restarting" phase, not "running", so the conditional skipped
+     `docker compose down` and the restart loop re-mounted the
+     directory between cleanup attempts.
+  2. Docker on some setups (e.g. rootful daemon) creates the
+     bind-mount source as root-owned — a regular user's `rm -rf`
+     failed silently with a permission error.
+- `pair.sh` now: unconditionally `docker compose down --remove-orphans`
+  (idempotent — no-op if nothing is up), tries `rm -rf`, falls back to
+  `sudo rm -rf` if Docker made the dir root-owned, and *positively
+  verifies* `credentials.json` no longer exists before continuing.
+  If it still can't be removed, prints the exact 3-line manual
+  recovery instead of failing later with the same opaque error.
+
 ## [0.4.9] - 2026-05-08
 
 ### Fixed
