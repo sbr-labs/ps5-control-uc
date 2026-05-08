@@ -189,6 +189,23 @@ the Remote 3.
 
 ## Troubleshooting
 
+**Remote 3 says "connection refused" / "host not reachable" pointing at the daemon.** Run this one-liner on the daemon host to diagnose all five common causes at once:
+```bash
+echo "===container===" && docker ps -a --filter name=ps5-control \
+  && echo "===log===" && cd ~/ps5-control-uc/daemon && docker compose logs --tail 30 ps5-control \
+  && echo "===curl===" && curl -v http://localhost:8456/health 2>&1 | tail -10 \
+  && echo "===listening===" && (ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null) | grep 8456 \
+  && echo "===lan ip===" && hostname -I
+```
+What each section tells you:
+- **container**: shows `Up X minutes` (good) or `Exited` (daemon crashed — check log)
+- **log**: any Python traceback explains why the daemon stopped
+- **curl**: HTTP 200 = daemon process is alive and serving locally; "Connection refused" here = daemon process died inside container
+- **listening**: should show `0.0.0.0:8456` (good) or `::1:8456` (only loopback, fix `LISTEN_HOST=0.0.0.0` in `daemon/.env`)
+- **lan ip**: confirms the IP you typed into the Remote 3 setup matches what the daemon's host actually has
+
+If `curl` from the daemon host works but the Remote 3 still gets refused, it's a network problem (firewall on daemon host, different VLAN, etc.) — `sudo ufw allow 8456/tcp` if `ufw` is active on a Pi.
+
 **Install seems stuck on `pip install --quiet pyremoteplay...`.** It
 isn't — pip is compiling C-extension packages from source because there
 are no prebuilt wheels for your CPU architecture (this is the normal

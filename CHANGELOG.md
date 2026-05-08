@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.16] - 2026-05-08
+
+### Added
+- `install.sh` now **verifies the daemon is actually responding** on
+  `:8456` (via `curl http://localhost:8456/health`) before declaring
+  success. Previously the container could start, the Python daemon
+  inside could crash on bad credentials / unreachable PS5 / port
+  collision, and `install.sh` would print "Done!" while the Remote 3
+  saw connection refused. Now the script polls health for up to 15s
+  and aborts with a clear "check `docker compose logs ps5-control`"
+  pointer if the daemon never comes up.
+- README troubleshooting block for "Remote 3 says connection refused"
+  with a single one-liner that prints all five common-cause
+  diagnostics (container state, daemon log, local curl, listen-IP,
+  daemon-host LAN IP) so users can paste output and see exactly which
+  layer is broken.
+
 ## [0.4.15] - 2026-05-08
 
 ### Fixed

@@ -113,7 +113,29 @@ say "Starting daemon..."
 # is up — so always safe.
 docker compose down --remove-orphans >/dev/null 2>&1 || true
 docker compose up -d --force-recreate
-ok "Daemon running."
+ok "Container started."
+
+# Verify the daemon is *actually* responding on :8456 — not just that the
+# container is up. The container can start successfully and then the
+# Python process inside crashes (bad credentials.json, PS5 unreachable
+# at boot, etc.) — without this check, install.sh would print "Done!"
+# while the Remote 3 sees connection refused.
+say "Waiting for daemon HTTP API to come up on :8456..."
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  if curl -fsS -m 2 -o /dev/null http://localhost:8456/health 2>/dev/null; then
+    ok "Daemon responding on :8456 (after ${i}s)."
+    break
+  fi
+  if [[ $i -eq 15 ]]; then
+    err "Daemon container is up but NOT responding on :8456 after 15s."
+    err "Likely the Python daemon crashed inside the container. Check:"
+    err "    cd daemon && docker compose logs ps5-control"
+    err "Common causes: invalid credentials.json, PS5 unreachable at boot,"
+    err "or another process already on :8456. Fix and run ./install.sh again."
+    exit 1
+  fi
+  sleep 1
+done
 
 # --- 5. Print summary ---------------------------------------------------------
 HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "<this-machine-IP>")
