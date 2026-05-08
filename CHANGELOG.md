@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.21] - 2026-05-08
+
+### Changed
+- Default media-widget image is now the **official PS5 wordmark
+  hosted on Wikimedia Commons** instead of the bundled generic
+  gamepad SVG. The Remote 3 fetches the URL directly, so the image
+  never has to live in our repo (just references the public
+  Wikipedia/Wikimedia copy). Visually closer to what users want
+  out of the box; legally the image stays on Wikimedia.
+  - User override still works the same way: set
+    `HOME_IMAGE_URL=<your-url>` in `daemon/.env` to use your own.
+  - To go back to the bundled generic SVG: set `HOME_IMAGE_URL=""`
+    and `HOME_IMAGE_FILE=/app/default-home-image.svg`.
+
 ## [0.4.20] - 2026-05-08
 
 ### Added
