@@ -189,6 +189,8 @@ the Remote 3.
 
 ## Troubleshooting
 
+**PS5 and the daemon-host are on different subnets / VLANs.** Two cross-subnet hops are involved: *daemon → PS5* (outbound to control the PS5) and *Remote 3 → daemon* (inbound for button presses). Both can be silently blocked by router or firewall rules even when `ping` works for normal browsing — typical "guest network isolation" or VLAN ACLs do exactly this. Diagnose with `ping <ps5-ip>` and `nc -zv <ps5-ip> 9295` from the daemon host; if `ping` works but `nc` fails, the router is allowing ICMP but blocking TCP/UDP between the subnets. **Simplest fix: put the daemon-host on the same subnet as the PS5.** Either move the PS5 to the daemon's subnet, install the daemon on a Pi/HA already on the PS5's subnet, or open TCP 9295, UDP 9296, UDP 9302, and TCP 8456 between the two subnets in your router/firewall.
+
 **Remote 3 says "connection refused" / "host not reachable" pointing at the daemon.** Run this one-liner on the daemon host to diagnose all five common causes at once:
 ```bash
 echo "===container===" && docker ps -a --filter name=ps5-control \

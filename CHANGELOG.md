@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.19] - 2026-05-08
+
+### Added
+- README troubleshooting entry for cross-subnet / VLAN setups. PS5
+  and daemon-host on different subnets is a common cause of silent
+  "connection refused" — `ping` works, but TCP/UDP between subnets
+  is blocked by router/firewall rules (typical "guest network
+  isolation" or VLAN ACL behaviour). Documented the
+  `ping`+`nc` diagnostic and recommended the same-subnet fix.
+
 ## [0.4.18] - 2026-05-08
 
 ### Fixed
