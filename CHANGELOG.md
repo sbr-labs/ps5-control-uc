@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.15] - 2026-05-08
+
+### Fixed
+- `install.sh` failed at the final `docker compose up -d` step with
+  `Error response from daemon: Conflict. The container name
+  "/ps5-control" is already in use by container "<id>"` when a previous
+  install attempt had left a stopped container behind (Ctrl+C, crash
+  loop, prior failed install, etc.). `update.sh` already used
+  `--force-recreate` to handle this case but `install.sh` didn't. Added
+  `docker compose down --remove-orphans` (idempotent — no-op when
+  nothing is up) plus `docker compose up -d --force-recreate` to the
+  install end-of-flow.
+
 ## [0.4.14] - 2026-05-08
 
 ### Fixed

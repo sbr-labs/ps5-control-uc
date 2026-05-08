@@ -105,7 +105,14 @@ docker compose build
 ok "Build OK."
 
 say "Starting daemon..."
-docker compose up -d
+# Bring down any stale container first. If a previous install attempt left
+# `ps5-control` in stopped/exited state (Ctrl+C, crash loop, etc.), the
+# next `docker compose up -d` would fail with:
+#   "Conflict. The container name '/ps5-control' is already in use"
+# `docker compose down --remove-orphans` is idempotent — no-op when nothing
+# is up — so always safe.
+docker compose down --remove-orphans >/dev/null 2>&1 || true
+docker compose up -d --force-recreate
 ok "Daemon running."
 
 # --- 5. Print summary ---------------------------------------------------------
