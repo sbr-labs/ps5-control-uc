@@ -59,26 +59,32 @@ docker run --rm \
     python - <<PYEOF
 import json, sys
 from pyremoteplay import RPDevice
-from pyremoteplay.profile import Profiles
+from pyremoteplay.profile import Profiles, UserProfile
+
+USERNAME = 'shared-user'
 
 device = RPDevice('${PS5_HOST}')
 if not device.get_status():
     print('ERROR: Could not reach PS5 at ${PS5_HOST}', file=sys.stderr)
     sys.exit(1)
 
+# pyremoteplay 0.7.x: build the user profile manually (Profiles.new_user
+# would do an OAuth round-trip from a redirect URL — we already have the
+# Account ID, so skip that path).
 profiles = Profiles()
-user = profiles.new_user('shared-user', '${ACCOUNT_ID}', save=False)
+profiles.update_user(UserProfile(USERNAME, {'id': '${ACCOUNT_ID}', 'hosts': {}}))
 
-ok = device.register(user, '${PIN}', save=False, profiles=profiles)
-if not ok:
+result = device.register(USERNAME, '${PIN}', profiles=profiles, save=False)
+if not result:
     print('ERROR: Registration failed. Check the PIN is current and Account ID is correct.', file=sys.stderr)
     sys.exit(2)
 
-# Write profiles JSON to credentials.json — that's what the daemon expects.
-out = {}
-for u in profiles.users:
-    udata = profiles.get_user_profile(u)
-    out.update(udata)
+# Dump pyremoteplay-native profiles JSON. The daemon's loader accepts
+# this format directly (and falls back to ps5-mqtt format if needed).
+# dict(profiles) returns the underlying nested-dict storage —
+# get_user_profile() would wrap each value in a UserProfile object that
+# json.dump can't serialize.
+out = dict(profiles)
 with open('credentials.json', 'w') as f:
     json.dump(out, f, indent=2)
 print('credentials.json written.')

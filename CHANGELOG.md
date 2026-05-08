@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-05-08
+
+### Fixed
+- Pairing crashed with `TypeError: Profiles.new_user() got multiple values
+  for argument 'save'` immediately after entering the PIN, on every host
+  (not arch-specific). `pair.sh` was written against an older
+  `pyremoteplay` API. The current `Profiles.new_user(redirect_url, save)`
+  expects a PSN OAuth redirect URL and runs the OAuth flow internally —
+  but we already have the Account ID, so that path doesn't apply.
+  `pair.sh` now constructs a `UserProfile` directly with the supplied
+  Account ID, registers via `device.register(name, pin, profiles=...)`,
+  and dumps the resulting profiles dict (`dict(profiles)`) as
+  `credentials.json`. Reproduced + verified against pyremoteplay 0.7.6.
+
+### Changed
+- Daemon's `build_profiles_from_creds()` now accepts the native
+  pyremoteplay format that `pair.sh` writes (`{username: {"id": ...,
+  "hosts": {...}}}`) in addition to the legacy ps5-mqtt format
+  (`{key: {"accountId": ..., "registration": {"PS5-...": ...}}}`).
+  Existing ps5-mqtt-imported credentials still work unchanged.
+
 ## [0.4.3] - 2026-05-08
 
 ### Changed

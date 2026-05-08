@@ -82,30 +82,44 @@ log = logging.getLogger("ps5ctrl")
 # ---------- Profile loader ----------
 
 def build_profiles_from_creds(creds_path: str) -> tuple[str, Profiles]:
-    """Convert ps5-mqtt's credentials.json into a pyremoteplay Profiles dict."""
+    """Load credentials.json into a pyremoteplay Profiles dict.
+
+    Accepts two formats:
+    1. Native pyremoteplay (what pair.sh writes): {username: {"id": <id>,
+       "hosts": {<mac>: {"type": "PS5", "data": {...}}}}}.
+    2. Legacy ps5-mqtt: {<key>: {"accountId": ..., "registration":
+       {"PS5-Mac": ..., ...}}}. Kept for users importing creds from an
+       existing ps5-mqtt setup.
+    """
     with open(creds_path) as f:
         data = json.load(f)
     if not data:
         raise ValueError(f"No credentials in {creds_path}")
-    _key, ps5 = next(iter(data.items()))
-    reg = ps5["registration"]
+    first_key, first_val = next(iter(data.items()))
 
-    # Strip "PS5-" prefix from keys (matches pyremoteplay.util.add_regist_data).
-    host_data = {
-        (k.split("-", 1)[1] if k.startswith("PS5-") else k): v
-        for k, v in reg.items()
-    }
-    # Hosts dict keyed by UPPERCASE MAC (matches DDP host-id response).
-    mac_upper = reg["PS5-Mac"].upper().replace(":", "")
-    user_name = reg["PS5-Nickname"]
+    if isinstance(first_val, dict) and "id" in first_val and "hosts" in first_val:
+        # Native pyremoteplay format
+        return first_key, Profiles(data)
 
-    profiles = Profiles({
-        user_name: {
-            "id":    ps5["accountId"],
-            "hosts": {mac_upper: {"type": "PS5", "data": host_data}},
+    if isinstance(first_val, dict) and "accountId" in first_val and "registration" in first_val:
+        # Legacy ps5-mqtt format
+        ps5 = first_val
+        reg = ps5["registration"]
+        host_data = {
+            (k.split("-", 1)[1] if k.startswith("PS5-") else k): v
+            for k, v in reg.items()
         }
-    })
-    return user_name, profiles
+        mac_upper = reg["PS5-Mac"].upper().replace(":", "")
+        user_name = reg["PS5-Nickname"]
+        profiles = Profiles({
+            user_name: {
+                "id":    ps5["accountId"],
+                "hosts": {mac_upper: {"type": "PS5", "data": host_data}},
+            }
+        })
+        return user_name, profiles
+
+    raise ValueError(f"Unrecognised credentials format in {creds_path}")
 
 
 # ---------- Session manager ----------
