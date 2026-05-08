@@ -12,10 +12,16 @@ services:
     ports:
       - "${LISTEN_PORT:-8456}:8456"
     environment:
-      PS5_HOST:    "${PS5_HOST}"
-      PS5_CREDS:   "/data/credentials.json"
-      LISTEN_HOST: "0.0.0.0"
-      LISTEN_PORT: "8456"
-      LOG_LEVEL:   "${LOG_LEVEL:-INFO}"
+      PS5_HOST:        "${PS5_HOST}"
+      PS5_CREDS:       "/data/credentials.json"
+      LISTEN_HOST:     "0.0.0.0"
+      LISTEN_PORT:     "8456"
+      LOG_LEVEL:       "${LOG_LEVEL:-INFO}"
+      # Default home/fallback image bundled in the Docker image (since
+      # v0.4.20). Override via HOME_IMAGE_URL=<external-url> in .env to
+      # use your own art, or HOME_IMAGE_FILE=<path-inside-container> if
+      # you mount a file in via volumes.
+      HOME_IMAGE_FILE: "${HOME_IMAGE_FILE:-/app/default-home-image.svg}"
+      HOME_IMAGE_URL:  "${HOME_IMAGE_URL:-}"
     volumes:
       - ./credentials.json:/data/credentials.json:ro

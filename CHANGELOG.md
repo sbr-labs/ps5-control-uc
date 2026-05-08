@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.20] - 2026-05-08
+
+### Added
+- **Default home / fallback image bundled in the Docker image.** The
+  daemon's `/home_image` endpoint previously returned nothing if the
+  user didn't set `HOME_IMAGE_FILE` or `HOME_IMAGE_URL`, so the
+  Remote 3 media-player widget showed a blank box when the PS5 was
+  on the home screen. v0.4.20 ships a generic gamepad SVG at
+  `/app/default-home-image.svg` and `docker-compose.yml` defaults
+  `HOME_IMAGE_FILE` to that path. The art is original (no Sony
+  trademarks) so it's safe to redistribute.
+- Override knobs in `.env` for users who want their own image:
+  - `HOME_IMAGE_URL=https://example.com/my.png` — daemon serves that URL as the media image
+  - `HOME_IMAGE_FILE=/path/in/container/my.png` — daemon reads from disk (mount via `volumes:`)
+
 ## [0.4.19] - 2026-05-08
 
 ### Added

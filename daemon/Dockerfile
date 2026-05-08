@@ -8,7 +8,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY daemon.py .
+COPY daemon.py default-home-image.svg ./
 
 # /data is mounted from host with credentials.json
 VOLUME /data

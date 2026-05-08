@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1628"/>
+      <stop offset="1" stop-color="#1a2742"/>
+    </linearGradient>
+    <linearGradient id="pad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5f5f7"/>
+      <stop offset="1" stop-color="#c8c8d0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <g transform="translate(400 320)">
+    <!-- gamepad body -->
+    <path d="M -180 -50 Q -240 -50 -240 30 L -240 75 Q -240 110 -200 110 L -160 110 Q -130 110 -110 80 L -90 50 L 90 50 L 110 80 Q 130 110 160 110 L 200 110 Q 240 110 240 75 L 240 30 Q 240 -50 180 -50 Z"
+          fill="url(#pad)" stroke="#666" stroke-width="2"/>
+    <!-- left stick -->
+    <circle cx="-130" cy="35" r="20" fill="#3a3a45"/>
+    <circle cx="-130" cy="35" r="12" fill="#1a1a22"/>
+    <!-- right stick -->
+    <circle cx="50" cy="35" r="20" fill="#3a3a45"/>
+    <circle cx="50" cy="35" r="12" fill="#1a1a22"/>
+    <!-- d-pad -->
+    <rect x="-78" y="-22" width="44" height="14" rx="2" fill="#3a3a45"/>
+    <rect x="-63" y="-37" width="14" height="44" rx="2" fill="#3a3a45"/>
+    <!-- face buttons -->
+    <circle cx="160" cy="-30" r="9" fill="#3a3a45"/>
+    <circle cx="180" cy="-10" r="9" fill="#3a3a45"/>
+    <circle cx="140" cy="-10" r="9" fill="#3a3a45"/>
+    <circle cx="160" cy="10" r="9" fill="#3a3a45"/>
+    <!-- center logo -->
+    <circle cx="0" cy="0" r="6" fill="#3a3a45"/>
+  </g>
+  <text x="400" y="500" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+        font-size="36" font-weight="700" fill="#ffffff" text-anchor="middle" letter-spacing="2">
+    PS5 Control
+  </text>
+  <text x="400" y="540" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+        font-size="18" font-weight="400" fill="#88aabb" text-anchor="middle">
+    sbr-labs · Remote Play daemon
+  </text>
+</svg>
