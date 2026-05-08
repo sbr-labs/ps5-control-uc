@@ -259,10 +259,27 @@ class PS5Controller:
 
     async def wakeup(self) -> bool:
         log.info("wakeup")
-        # RPDevice.wakeup is synchronous; run in executor to avoid blocking loop
+        # RPDevice.wakeup is synchronous; run in executor to avoid blocking loop.
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self.device.wakeup, self.user, self.profiles)
-        return await self.device.async_wait_for_wakeup(timeout=60)
+        # Fire-and-forget warmup: cold-booting a PS5 from rest takes 25–45 s,
+        # well past any reasonable HTTP timeout. Return immediately so the
+        # caller (driver / activity) sees success as soon as the WoL packet
+        # is sent. The 10-second /state poll picks up the actual "on" state
+        # shortly after boot, and `ensure_session` here pre-warms the
+        # Remote Play session so the first button after boot is instant.
+        asyncio.create_task(self._post_wakeup_warmup())
+        return True
+
+    async def _post_wakeup_warmup(self) -> None:
+        try:
+            woke = await self.device.async_wait_for_wakeup(timeout=60)
+            if woke:
+                await self.ensure_session()
+            else:
+                log.warning("PS5 did not wake within 60s")
+        except Exception:
+            log.exception("post-wakeup warmup failed")
 
     async def standby(self) -> bool:
         log.info("standby")
