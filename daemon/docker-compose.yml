@@ -3,12 +3,19 @@ services:
     build: .
     container_name: ps5-control
     restart: unless-stopped
-    network_mode: host
+    # Published port instead of `network_mode: host`. host mode works on
+    # Linux and OrbStack but on Docker Desktop for Mac the "host" is the
+    # internal Linux VM, NOT the Mac's actual LAN — so the daemon would
+    # be invisible to the Remote 3 even with firewall off. Bridge + port
+    # publish works identically on all three platforms (Linux, OrbStack,
+    # Docker Desktop) and is the more portable default.
+    ports:
+      - "${LISTEN_PORT:-8456}:8456"
     environment:
       PS5_HOST:    "${PS5_HOST}"
       PS5_CREDS:   "/data/credentials.json"
       LISTEN_HOST: "0.0.0.0"
-      LISTEN_PORT: "${LISTEN_PORT:-8456}"
+      LISTEN_PORT: "8456"
       LOG_LEVEL:   "${LOG_LEVEL:-INFO}"
     volumes:
       - ./credentials.json:/data/credentials.json:ro

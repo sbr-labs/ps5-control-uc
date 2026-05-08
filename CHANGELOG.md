@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.18] - 2026-05-08
+
+### Fixed
+- **Connection refused from the Remote 3 when the daemon runs on
+  Docker Desktop for Mac.** Cause: the docker-compose.yml used
+  `network_mode: host`, which on Linux and OrbStack means "the host's
+  real network", but on Docker Desktop for Mac means "the internal
+  Linux VM Docker Desktop runs Docker in" — NOT the Mac's actual
+  LAN. The daemon was invisible to anything on the LAN regardless of
+  which Mac IP (LAN or Wi-Fi) the user typed into the Remote 3
+  integration setup, and turning off the firewall didn't help
+  because there was nothing listening at the Mac's LAN IP at all.
+  Switched to `ports: ["8456:8456"]` (Docker bridge networking with
+  a published port). Same effect on Linux/OrbStack as before, and
+  finally works on Docker Desktop Mac. Verified locally: daemon
+  reachable on both `localhost:8456` and `<mac-lan-ip>:8456` (HTTP
+  200 from both), and outbound connections to the PS5 still work
+  fine through the bridge NAT.
+
 ## [0.4.17] - 2026-05-08
 
 ### Added
