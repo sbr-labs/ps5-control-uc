@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.22] - 2026-05-08
+
+### Added
+- README **"Network model"** section up top, plus a callout in the
+  Stopping/Restarting section, making the LAN-only assumption
+  explicit: the daemon has no auth on `:8456`, so don't port-forward
+  it to the WAN — use Tailscale / WireGuard / HA remote access for
+  off-LAN access. Also covers tidy-up steps for users coming from
+  the older `ps5-mqtt` HA add-on (uninstall it, delete `1883/8883`
+  port-forwards, etc.). Docs only — no code changes.
+
 ## [0.4.21] - 2026-05-08
 
 ### Changed

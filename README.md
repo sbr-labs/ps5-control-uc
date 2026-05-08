@@ -36,6 +36,16 @@ The daemon host can be any Linux machine with Docker — Raspberry Pi, NAS,
 old laptop, mini-PC. It just needs to stay on while you want PS5 control
 from the remote.
 
+## Network model — LAN-only, no port-forwards needed
+
+The daemon binds an HTTP API on `8456` and is designed to be reached **only on your LAN** by the Remote 3 (or by other LAN-side scripts / Home Assistant). It does **not** need an internet-facing port-forward, does **not** use MQTT, and shouldn't be opened to the WAN.
+
+If you previously ran the older community `ps5-mqtt` Home Assistant add-on and you've now switched to this project, tidy up the leftover state from that setup:
+
+1. **Uninstall the `ps5-mqtt` add-on** in HA → Settings → Add-ons (stopping it isn't enough — uninstall it).
+2. **Delete any router port-forwards** you added for that add-on, typically `1883/tcp` and/or `8883/tcp`. This project doesn't need them.
+3. If you don't use MQTT for anything else (e.g. Zigbee2MQTT), you can also uninstall the **Mosquitto broker** add-on. If you do use it for Zigbee2MQTT etc., just leave it on the LAN.
+
 ## Install — step by step
 
 > **How long it takes:** ~5 minutes on a Mac / Intel Linux box / 64-bit
@@ -277,6 +287,8 @@ docker compose down       # stop
 docker compose up -d      # start
 docker compose logs -f    # tail logs
 ```
+
+> **Keep it LAN-only.** The daemon has no auth — anyone who can reach `:8456` can press buttons on your PS5. Don't port-forward `8456` to the WAN; access remotely via Tailscale / WireGuard / your existing HA remote-access setup instead. From a phone on 4G, `nc -zv <your-public-ip> 8456` should time out.
 
 ## Privacy / what stays local
 
