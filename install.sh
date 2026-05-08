@@ -78,10 +78,15 @@ if [[ ! -f "credentials.json" ]]; then
   echo "        (PS5 → Settings → System → Remote Play → Link Device)"
   echo
   read -r -p "Need to look up your Account ID via OAuth first? (y/N): " RUN_OAUTH
-  if [[ "${RUN_OAUTH,,}" == "y" ]]; then
-    ( cd .. && bash get-account-id.sh ) || warn "OAuth lookup failed — try https://psn.flipscreen.games instead"
-    echo
-  fi
+  # `${VAR,,}` (lowercase) is bash-4-only — macOS ships bash 3.2 and would
+  # bail with `bad substitution` here, killing the whole installer. Use a
+  # portable case-glob to match Y / y / YES / yes / etc.
+  case "$RUN_OAUTH" in
+    [Yy]|[Yy][Ee][Ss])
+      ( cd .. && bash get-account-id.sh ) || warn "OAuth lookup failed — try https://psn.flipscreen.games instead"
+      echo
+      ;;
+  esac
   read -r -p "Press Enter when ready to pair (or Ctrl+C to cancel)..."
   bash ../pair.sh "$PS5_HOST"
   if [[ ! -f "credentials.json" ]]; then

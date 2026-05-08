@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.14] - 2026-05-08
+
+### Fixed
+- `install.sh` crashed with `bad substitution` on macOS at the OAuth
+  prompt: `if [[ "${RUN_OAUTH,,}" == "y" ]]`. The `${VAR,,}` (lowercase
+  conversion) is bash 4+ syntax, but **macOS ships with bash 3.2** by
+  default (Apple stopped updating bash in 2007 due to GPL3). Replaced
+  with a portable `case` glob (`[Yy]|[Yy][Ee][Ss]`) that works
+  identically on bash 3.2 (macOS) and bash 4+/5 (Linux). Verified on
+  macOS arm64 + OrbStack, Linux arm64, Linux x86_64, plus a deliberate
+  broken-state recovery test (root-owned files + stale
+  `credentials.json/` directory) on Linux arm64.
+
 ## [0.4.13] - 2026-05-08
 
 ### Added
