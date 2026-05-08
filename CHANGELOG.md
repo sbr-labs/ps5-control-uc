@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.11] - 2026-05-08
+
+### Fixed
+- v0.4.10's host-side cleanup of the stale `credentials.json/`
+  directory wasn't enough on every setup: even with unconditional
+  `docker compose down --remove-orphans` and `sudo rm -rf` fallback,
+  some users still hit `IsADirectoryError` at the
+  `with open('credentials.json', 'w')` line. Cause is environment-
+  specific (race with restart loop, network mount, permission edge
+  case, or user not actually on v0.4.10). Added a last-line-of-
+  defence cleanup *inside* the registration container's Python
+  script — `if os.path.isdir(...): shutil.rmtree(...)` immediately
+  before the file open. The container runs as root with write access
+  to the mounted volume, so this removes any directory the host-side
+  step missed.
+
 ## [0.4.10] - 2026-05-08
 
 ### Fixed

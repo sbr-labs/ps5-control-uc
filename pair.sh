@@ -155,11 +155,22 @@ docker run --rm -i \
   -v "$(pwd):/work" \
   -w /work \
   ps5-control-pairing python - <<PYEOF
-import json, sys
+import json, os, shutil, sys
 from pyremoteplay import RPDevice
 from pyremoteplay.profile import Profiles, UserProfile
 
 USERNAME = 'shared-user'
+
+# Last-line-of-defence cleanup. If the host-side cleanup in pair.sh
+# didn't manage to remove a stale credentials.json/ directory (e.g.
+# permission edge case, race with the daemon's restart loop, user on
+# an older pair.sh), do it here from inside the registration container
+# right before we try to open the file for writing. The container
+# runs as root and has write access to /work, so this removes any
+# directory that the host-side step left behind.
+if os.path.isdir('credentials.json'):
+    print('Stale credentials.json/ directory detected inside container — removing.', file=sys.stderr)
+    shutil.rmtree('credentials.json')
 
 device = RPDevice('${PS5_HOST}')
 if not device.get_status():
