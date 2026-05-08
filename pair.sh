@@ -21,6 +21,21 @@ fi
 
 cd "$(dirname "$0")/daemon"
 
+# Docker Compose's bind-mount (`./credentials.json:/data/credentials.json:ro`)
+# auto-creates the source as a DIRECTORY if it doesn't exist when
+# `docker compose up` runs. If a previous failed install ran the daemon
+# before pairing succeeded, we end up with credentials.json as an empty
+# directory — and Python's `open('credentials.json', 'w')` then crashes
+# with `IsADirectoryError`. Detect and clean up before pairing.
+if [[ -d credentials.json ]]; then
+  echo "==> Removing stale credentials.json directory (created by docker compose up before pairing succeeded)..."
+  if docker compose ps --status=running --quiet 2>/dev/null | grep -q .; then
+    echo "    Bringing daemon down so we can remove the bind-mount source..."
+    docker compose down >/dev/null 2>&1 || true
+  fi
+  rm -rf credentials.json
+fi
+
 CYAN="\033[1;36m"; GRN="\033[1;32m"; YEL="\033[1;33m"; OFF="\033[0m"
 say()  { printf "${CYAN}==>${OFF} %s\n" "$1"; }
 ok()   { printf "${GRN}✓${OFF}  %s\n" "$1"; }

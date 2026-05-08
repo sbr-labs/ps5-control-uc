@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.9] - 2026-05-08
+
+### Fixed
+- Pairing crashed with `IsADirectoryError: [Errno 21] Is a directory:
+  'credentials.json'` after entering the PIN. Cause: Docker Compose's
+  `./credentials.json:/data/credentials.json:ro` bind-mount auto-creates
+  the source as an **empty directory** if the file doesn't exist when
+  `docker compose up` runs. If a previous (failed) install attempt
+  brought the daemon up before pairing succeeded — or the user ran
+  `docker compose up` manually — the host ended up with
+  `credentials.json` as a directory, and Python's
+  `open('credentials.json', 'w')` then refused to write through it.
+  `pair.sh` now detects this stale state at startup, brings the daemon
+  down if it's running (so the bind-mount releases the directory),
+  and `rm -rf`s the empty directory before running registration.
+
 ## [0.4.8] - 2026-05-08
 
 ### Fixed
