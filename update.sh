@@ -26,6 +26,19 @@ if ! command -v docker >/dev/null 2>&1; then
   err "Docker required."; exit 1
 fi
 
+# --- 1b. Self-heal root-owned files left over by Docker ---------------------
+# Docker bind-mounts can write files owned by root, which then block
+# `git pull` / `git reset` for non-root users. Detect and chown back before
+# attempting the pull. Same defensive pattern install.sh and pair.sh use.
+if [[ -n "${USER:-}" ]] && find . -mindepth 1 -not -path './.git/*' -not -user "$USER" -print -quit 2>/dev/null | grep -q .; then
+  say "Found root-owned files (left over from a previous Docker run). Fixing ownership..."
+  if command -v sudo >/dev/null 2>&1 && sudo chown -R "$USER":"$(id -gn)" . 2>/dev/null; then
+    ok "Ownership reset to $USER."
+  else
+    warn "Could not chown (no sudo or chown failed). git pull may fail."
+  fi
+fi
+
 # --- 2. Track current version ------------------------------------------------
 PREV_REV=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
 PREV_TARBALL_HASH=""

@@ -21,6 +21,18 @@ fi
 
 cd "$(dirname "$0")/daemon"
 
+# Self-heal root-owned files in daemon/. Docker bind-mounts can leave files
+# behind owned by root (Docker writes as root inside containers). On the host
+# those root-owned files block subsequent `git pull` / chmod / rm operations
+# for non-root users. Quietly chown them back to the current user before
+# continuing — same defensive pattern install.sh uses.
+if [[ -n "${USER:-}" ]] && find . -mindepth 1 -not -user "$USER" -print -quit 2>/dev/null | grep -q .; then
+  echo "==> Root-owned files in daemon/ — fixing ownership before pairing..."
+  if command -v sudo >/dev/null 2>&1; then
+    sudo chown -R "$USER":"$(id -gn)" . 2>/dev/null || true
+  fi
+fi
+
 # Docker Compose's bind-mount (`./credentials.json:/data/credentials.json:ro`)
 # auto-creates the source as a DIRECTORY if it doesn't exist when
 # `docker compose up` runs. If a previous failed install ran the daemon

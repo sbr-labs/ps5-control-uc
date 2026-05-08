@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.13] - 2026-05-08
+
+### Added
+- `install.sh`, `pair.sh`, and `update.sh` now **self-heal root-owned
+  files** left over from previous Docker bind-mount activity. Docker
+  writes inside containers as root, and bind-mount sources on the host
+  end up root-owned — which then blocks subsequent `git pull` / `git
+  reset` / `chmod` / `rm` operations for non-root users. The tester hit
+  this between v0.4.11 and v0.4.12: `git reset --hard origin/main`
+  failed with `error: unable to create file daemon/Dockerfile:
+  Permission denied` because Docker had previously written into
+  `daemon/` as root. All three scripts now detect any non-current-user-
+  owned file under their working directory and `sudo chown -R` it back
+  to the current user before continuing. Idempotent and quiet when
+  nothing needs fixing.
+
 ## [0.4.12] - 2026-05-08
 
 ### Changed

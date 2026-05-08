@@ -27,6 +27,23 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 ok "Docker $(docker --version | awk '{print $3}' | tr -d ',') ready."
 
+# --- 1b. Self-heal root-owned files in daemon/ -------------------------------
+# Docker bind-mounts can leave root-owned files behind (e.g. credentials.json
+# or its parent directory created during a failed install attempt with an
+# older version of this script). On a `git pull` to a fixed version those
+# root-owned files would block git from updating the working tree
+# ("error: unable to create file ...: Permission denied"), and the user gets
+# stuck. Detect any non-current-user-owned regular files / dirs under here
+# and chown them back, so subsequent `git pull` / `docker compose` work.
+if [[ -n "${USER:-}" ]] && find . -mindepth 1 -not -user "$USER" -print -quit 2>/dev/null | grep -q .; then
+  say "Found root-owned files in daemon/ (left over from a previous Docker run). Fixing ownership..."
+  if command -v sudo >/dev/null 2>&1 && sudo chown -R "$USER":"$(id -gn)" . 2>/dev/null; then
+    ok "Ownership of daemon/ reset to $USER."
+  else
+    warn "Could not chown daemon/ (no sudo or chown failed). Continuing — may fail later."
+  fi
+fi
+
 # --- 2. PS5 IP ----------------------------------------------------------------
 ENV_FILE=".env"
 if [[ -f "$ENV_FILE" ]]; then
