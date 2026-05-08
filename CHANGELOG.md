@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-05-08
+
+### Fixed
+- **PIN-expiration race on Raspberry Pi armv7l.** The previous flow asked
+  for the 8-digit pairing PIN, *then* spent 5–10 minutes installing
+  Python deps inside the container (pip compiling
+  `netifaces`/`cffi`/`pycryptodomex` from source — no armv7l wheels on
+  PyPI), *then* tried to register with the PS5. PINs are valid ~5 min,
+  so the PIN often expired mid-flight even when the user waited
+  patiently. The Pi tester also Ctrl+C'd thinking it was hung, because
+  `pip install --quiet` produces several minutes of silent output.
+  `pair.sh` now installs everything via `docker build` *before* asking
+  for the PIN: the build is slow once (5–10 min on Pi), cached on every
+  retry (<30s), and the post-PIN registration step runs in seconds
+  while the PIN is still fresh.
+- `pair.sh` user-facing messaging now explicitly tells the user the
+  build phase is the slow one and warns them not to Ctrl+C, plus
+  explains *why* deps are installed before the PIN prompt (so the PIN
+  doesn't expire). Status output uses coloured `==>` / `✓` / `!`
+  markers so progress is visible.
+
 ## [0.4.5] - 2026-05-08
 
 ### Fixed
