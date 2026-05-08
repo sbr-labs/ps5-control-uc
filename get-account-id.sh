@@ -24,6 +24,6 @@ docker run --rm -it \
     apt-get update -qq
     apt-get install -y --no-install-recommends \
       gcc libc6-dev libffi-dev libssl-dev >/dev/null
-    pip install --quiet pyremoteplay "pyee<12" 2>&1 | tail -1
+    pip install --quiet pyremoteplay "pyee<12" "async-timeout>=4.0" 2>&1 | tail -1
     python3 get-account-id.py
   '

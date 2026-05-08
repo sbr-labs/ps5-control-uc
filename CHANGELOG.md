@@ -14,6 +14,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `netifaces` / `cffi` / `pycryptodomex`, so pip fell back to source builds
   that immediately broke. Both scripts now `apt-get install gcc libc6-dev
   libffi-dev libssl-dev` inside the container before `pip install`.
+- `pair.sh` and `get-account-id.sh` now also install `async-timeout>=4.0`
+  alongside `pyremoteplay`. It's a transitive runtime dep (via
+  `pyps4_2ndscreen`) that pip's resolver doesn't pull automatically, so
+  `from pyremoteplay import RPDevice` raised `ModuleNotFoundError: No
+  module named 'async_timeout'` on every host once the gcc error was past.
 - `daemon/Dockerfile` now also installs `libffi-dev` + `libssl-dev` so the
   daemon image builds cleanly on armv7l (cffi needs `ffi.h`).
 

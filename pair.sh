@@ -55,7 +55,7 @@ docker run --rm \
     apt-get update -qq
     apt-get install -y --no-install-recommends \
       gcc libc6-dev libffi-dev libssl-dev >/dev/null
-    pip install --quiet pyremoteplay 'pyee<12'
+    pip install --quiet pyremoteplay 'pyee<12' 'async-timeout>=4.0'
     python - <<PYEOF
 import json, sys
 from pyremoteplay import RPDevice
