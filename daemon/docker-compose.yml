@@ -17,15 +17,13 @@ services:
       LISTEN_HOST:     "0.0.0.0"
       LISTEN_PORT:     "8456"
       LOG_LEVEL:       "${LOG_LEVEL:-INFO}"
-      # Default media-widget art = the official PS5 wordmark hosted on
-      # Wikimedia Commons (since v0.4.21). The Remote 3 fetches the URL
-      # directly, so the image never has to live in our repo (just
-      # references it). Override:
-      #   - set HOME_IMAGE_URL=<other-public-url> for your own art,
-      #   - set HOME_IMAGE_URL="" + HOME_IMAGE_FILE=/app/default-home-image.svg
-      #     to use the original bundled gamepad SVG instead,
+      # Default media-widget art = bundled PNG served by the daemon
+      # at /home_image. The UC Remote 3 only renders raster (PNG/JPG),
+      # so the previous SVG default never showed up on the widget.
+      # Override:
+      #   - set HOME_IMAGE_URL=<public-url> to use any external image,
       #   - or HOME_IMAGE_FILE=/path/in/container to a mounted file.
-      HOME_IMAGE_URL:  "${HOME_IMAGE_URL:-https://upload.wikimedia.org/wikipedia/commons/c/cb/PlayStation_5_logo_and_wordmark.svg}"
-      HOME_IMAGE_FILE: "${HOME_IMAGE_FILE:-/app/default-home-image.svg}"
+      HOME_IMAGE_URL:  "${HOME_IMAGE_URL:-}"
+      HOME_IMAGE_FILE: "${HOME_IMAGE_FILE:-/app/default-home-image.png}"
     volumes:
       - ./credentials.json:/data/credentials.json:ro
