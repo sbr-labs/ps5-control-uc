@@ -156,47 +156,63 @@ point is the Remote 3 upload above.
 
 ## Use your own picture on the media-player widget (optional)
 
-By default, the Remote 3 shows a PS5 wordmark on the media-player widget when the PS5 is on the home screen (no game running). Easy to swap for any picture you like — a screenshot, a piece of art, your dog, anything.
+By default, the Remote 3 shows a PS5 wordmark on the media-player widget when the PS5 is on the home screen (no game running). You can swap it for any picture you like — a screenshot, a piece of art, anything.
 
-**Option A — link to a picture on the internet (easiest)**
+### Step 1 — Find a picture and get its link
 
-1. **Find a PNG or JPG.** Must be a real image file (not SVG, not a webpage).
-2. **Get the direct image URL.** Right-click the image in your browser → **"Copy image address"** (Chrome/Edge) or **"Copy image link"** (Safari/Firefox). URL should end in `.png`, `.jpg`, or `.jpeg`. If it ends in `.html` or anything else, that's the webpage, not the image.
-3. **Edit `daemon/.env`** in your cloned repo and add (or change) the line:
-   ```
-   HOME_IMAGE_URL=https://example.com/my-art.png
-   ```
-4. **Restart the daemon:**
-   ```bash
-   cd daemon
-   docker compose up -d --force-recreate
-   ```
-5. New image shows on the Remote 3 within ~10 seconds.
+1. Find any picture on the internet you'd like to use.
+2. **Right-click the picture** in your browser → click **"Copy image address"** (Chrome / Edge) or **"Copy image link"** (Safari / Firefox).
+3. **Check the link ends in `.png`, `.jpg`, or `.jpeg`** — paste it into a new browser tab; you should see the picture by itself, with no website around it.
+   - If the link ends in `.html` or `.com` or anything else, you copied the webpage instead. Try right-clicking the picture itself, not the page.
+   - If the link ends in `.svg` it won't work — the Remote 3 only displays `.png` or `.jpg`.
 
-To go back to the default PS5 wordmark, set `HOME_IMAGE_URL=` (empty) in `.env` and restart.
+### Step 2 — Open the daemon's settings file
 
-**Option B — use a local file (no internet host needed)**
+On the machine running the daemon, open a Terminal and run:
 
-If you want to use a picture stored on your daemon machine, mount it into the container and point at it:
+```bash
+cd ~/ps5-control-uc/daemon
+nano .env
+```
 
-1. Save your PNG/JPG somewhere persistent on the host, e.g. `~/ps5-art/my.png`.
-2. Edit `daemon/docker-compose.yml`. Under `volumes:` add:
-   ```yaml
-       - ~/ps5-art/my.png:/data/my.png:ro
-   ```
-3. In the same file, under `environment:`, set:
-   ```yaml
-       HOME_IMAGE_URL: ""
-       HOME_IMAGE_FILE: "/data/my.png"
-   ```
-4. `docker compose up -d --force-recreate`.
+(`nano` is a beginner-friendly text editor that's pre-installed on most Linux systems and macOS.)
 
-**Common gotchas**
+You'll see a few lines that look like `KEY=value`.
 
-- URL ends in `.svg` → won't work. The Remote 3 only renders PNG/JPG.
-- Pasted a Wikipedia / Pinterest / Imgur *page* URL → won't work. You need the direct *image* URL (right-click → Copy image address).
-- URL works in your browser but Remote 3 shows nothing → some hosts block hot-linking. Try Imgur, Cloudinary, a GitHub Gist raw URL, or your own server.
-- Pictures you upload to Imgur should use the `i.imgur.com/<id>.png` form, not the `imgur.com/<id>` page form.
+### Step 3 — Add the picture link
+
+Add this line at the bottom of the file (replace the URL with your own from Step 1):
+
+```
+HOME_IMAGE_URL=https://example.com/my-picture.png
+```
+
+Save and exit nano: press **Ctrl + O**, then **Enter** to save, then **Ctrl + X** to exit.
+
+### Step 4 — Restart the daemon to pick up the change
+
+In the same Terminal:
+
+```bash
+docker compose up -d --force-recreate
+```
+
+That's the magic words to make Docker stop the daemon, take in the new setting, and start it again. About 10 seconds later, your picture appears on the Remote 3's media-player widget when the PS5 is on the home screen.
+
+### Want to go back to the default?
+
+Repeat Step 2, **delete the `HOME_IMAGE_URL=...` line** (or set it to empty: `HOME_IMAGE_URL=`), save, and run the same restart command.
+
+### "But my picture still doesn't show up!"
+
+- **Did the link end in `.png` or `.jpg`?** If it ends in `.svg`, `.html`, `.webp`, or anything else, the Remote 3 won't render it.
+- **Does the link work in a private/incognito browser tab?** If you only see the picture when logged in to that website, the Remote 3 can't see it either.
+- **Did you copy the *page* URL instead of the *image* URL?** Right-click the picture itself, not the page.
+- **Wikipedia / Pinterest / Imgur problems?** Those sites sometimes block "hot-linking" — using their pictures from outside their website. Easiest fix: upload your picture to a free image host like [imgbb.com](https://imgbb.com) or [postimages.org](https://postimages.org) and use the direct link they give you. Make sure the link ends in `.png` or `.jpg`.
+
+### Advanced: use a picture file on your machine (no internet host)
+
+If you'd rather use a picture file already on the daemon machine, see the comments inside `daemon/docker-compose.yml` — the `HOME_IMAGE_FILE` env var lets you point the daemon at a mounted file path. This requires editing two YAML blocks (volume mount + env var) so it's only worth it if you really don't want to host the picture online.
 
 ## Day-to-day controls
 

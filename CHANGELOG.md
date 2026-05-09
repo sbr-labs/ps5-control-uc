@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.27] - 2026-05-09
+
+### Changed
+- README rewritten in plain-English step-by-step form for setting a
+  custom media-player picture. Walks through opening Terminal,
+  using `nano` to edit `daemon/.env`, what to type, what each step
+  is doing, and what to do if the picture doesn't show up. Aimed at
+  users who don't already know Docker. Docs only.
+
 ## [0.4.26] - 2026-05-09
 
 ### Changed
