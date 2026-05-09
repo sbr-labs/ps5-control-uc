@@ -203,12 +203,23 @@ That's the magic words to make Docker stop the daemon, take in the new setting, 
 
 Repeat Step 2, **delete the `HOME_IMAGE_URL=...` line** (or set it to empty: `HOME_IMAGE_URL=`), save, and run the same restart command.
 
+### Want the official PS5 wordmark instead of the default gamepad?
+
+The default is a generic gamepad illustration so the project doesn't redistribute Sony trademarks. If you'd rather see the official PS5 wordmark on the widget, set this in `daemon/.env`:
+
+```
+HOME_IMAGE_URL=https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/PlayStation_5_logo_and_wordmark.svg/500px-PlayStation_5_logo_and_wordmark.svg.png
+```
+
+Then restart with `docker compose up -d --force-recreate`. This is the Wikimedia-hosted PNG render of the wordmark — your daemon points your own Remote 3 at Wikimedia's copy, no redistribution.
+
 ### "But my picture still doesn't show up!"
 
 - **Did the link end in `.png` or `.jpg`?** If it ends in `.svg`, `.html`, `.webp`, or anything else, the Remote 3 won't render it.
 - **Does the link work in a private/incognito browser tab?** If you only see the picture when logged in to that website, the Remote 3 can't see it either.
 - **Did you copy the *page* URL instead of the *image* URL?** Right-click the picture itself, not the page.
 - **Wikipedia / Pinterest / Imgur problems?** Those sites sometimes block "hot-linking" — using their pictures from outside their website. Easiest fix: upload your picture to a free image host like [imgbb.com](https://imgbb.com) or [postimages.org](https://postimages.org) and use the direct link they give you. Make sure the link ends in `.png` or `.jpg`.
+- **Picture looks letterboxed or stretched?** The Remote 3's media-player widget is **16:9 (widescreen)**, ~1024×576. Square images get black bars on the sides; very tall images get cropped. For best fit use a 16:9 PNG/JPG.
 
 ### Advanced: use a picture file on your machine (no internet host)
 

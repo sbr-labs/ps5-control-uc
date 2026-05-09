@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.28] - 2026-05-09
+
+### Changed
+- **Default home image is now 16:9 (1024×576)** to match the Remote 3
+  media-player widget aspect ratio. Previous PNG was 800×800 square
+  so it letterboxed or cropped. The bundled gamepad illustration
+  now fills the widget edge-to-edge.
+
+### Added
+- README pointer for users who'd prefer the official PS5 wordmark on
+  the widget — set `HOME_IMAGE_URL` in `daemon/.env` to a
+  Wikimedia-hosted PNG render URL, no redistribution.
+
 ## [0.4.27] - 2026-05-09
 
 ### Changed
