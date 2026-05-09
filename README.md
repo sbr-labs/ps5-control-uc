@@ -154,6 +154,50 @@ curl http://localhost:8456/health
 A JSON response means the daemon is live. The only thing left at that
 point is the Remote 3 upload above.
 
+## Use your own picture on the media-player widget (optional)
+
+By default, the Remote 3 shows a PS5 wordmark on the media-player widget when the PS5 is on the home screen (no game running). Easy to swap for any picture you like — a screenshot, a piece of art, your dog, anything.
+
+**Option A — link to a picture on the internet (easiest)**
+
+1. **Find a PNG or JPG.** Must be a real image file (not SVG, not a webpage).
+2. **Get the direct image URL.** Right-click the image in your browser → **"Copy image address"** (Chrome/Edge) or **"Copy image link"** (Safari/Firefox). URL should end in `.png`, `.jpg`, or `.jpeg`. If it ends in `.html` or anything else, that's the webpage, not the image.
+3. **Edit `daemon/.env`** in your cloned repo and add (or change) the line:
+   ```
+   HOME_IMAGE_URL=https://example.com/my-art.png
+   ```
+4. **Restart the daemon:**
+   ```bash
+   cd daemon
+   docker compose up -d --force-recreate
+   ```
+5. New image shows on the Remote 3 within ~10 seconds.
+
+To go back to the default PS5 wordmark, set `HOME_IMAGE_URL=` (empty) in `.env` and restart.
+
+**Option B — use a local file (no internet host needed)**
+
+If you want to use a picture stored on your daemon machine, mount it into the container and point at it:
+
+1. Save your PNG/JPG somewhere persistent on the host, e.g. `~/ps5-art/my.png`.
+2. Edit `daemon/docker-compose.yml`. Under `volumes:` add:
+   ```yaml
+       - ~/ps5-art/my.png:/data/my.png:ro
+   ```
+3. In the same file, under `environment:`, set:
+   ```yaml
+       HOME_IMAGE_URL: ""
+       HOME_IMAGE_FILE: "/data/my.png"
+   ```
+4. `docker compose up -d --force-recreate`.
+
+**Common gotchas**
+
+- URL ends in `.svg` → won't work. The Remote 3 only renders PNG/JPG.
+- Pasted a Wikipedia / Pinterest / Imgur *page* URL → won't work. You need the direct *image* URL (right-click → Copy image address).
+- URL works in your browser but Remote 3 shows nothing → some hosts block hot-linking. Try Imgur, Cloudinary, a GitHub Gist raw URL, or your own server.
+- Pictures you upload to Imgur should use the `i.imgur.com/<id>.png` form, not the `imgur.com/<id>` page form.
+
 ## Day-to-day controls
 
 | Remote 3 button | PS5 input |

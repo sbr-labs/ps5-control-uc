@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.26] - 2026-05-09
+
+### Changed
+- **Clearer instructions for setting your own media-player picture.**
+  Added a step-by-step README section ("Use your own picture on the
+  media-player widget") covering both the easy path (PNG/JPG URL via
+  `HOME_IMAGE_URL` in `daemon/.env`) and the local-file path (mount a
+  file into the container and point `HOME_IMAGE_FILE` at it). Lists
+  the common gotchas — SVG doesn't render, "page URL ≠ image URL",
+  hot-link blocking — so users don't go round in circles. Docs only.
+
 ## [0.4.25] - 2026-05-09
 
 ### Changed
