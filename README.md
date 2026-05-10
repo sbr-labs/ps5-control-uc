@@ -154,6 +154,76 @@ curl http://localhost:8456/health
 A JSON response means the daemon is live. The only thing left at that
 point is the Remote 3 upload above.
 
+## Get live game cover art on the media-player widget (optional)
+
+By default the media-player widget shows the bundled gamepad image regardless of what's running on the PS5. If you'd like it to show the **actual cover art for the game you're playing** (Call of Duty, Spider-Man, GT7, etc.) — and the title name in `/state` for any external automation — add your PSN cookie once and you're set forever.
+
+This works because Sony's PSN servers know what you're playing (same data source the PlayStation mobile app uses). The daemon asks them via Sony's REST API. Your PSN credentials never leave your network — only OAuth tokens signed by Sony are stored locally at `/data/psn_tokens.json`.
+
+### Step 1 — Get your PSN cookie
+
+1. Open https://www.playstation.com in any browser and sign in to your PSN account.
+2. In the **same browser tab**, visit https://ca.account.sony.com/api/v1/ssocookie. You'll see something like:
+   ```
+   {"npsso":"<a very long string>"}
+   ```
+3. **Copy just the long string** between the quotes (not the curly braces, not the word `npsso`).
+
+### Step 2 — Add it to the daemon
+
+On the daemon host, in a terminal:
+
+```bash
+cd ~/ps5-control-uc/daemon
+nano .env
+```
+
+Add this line at the bottom of `.env`:
+
+```
+PSN_NPSSO_TOKEN=<paste-the-string-from-step-1>
+```
+
+Save and exit nano: **Ctrl + O**, **Enter**, **Ctrl + X**.
+
+### Step 3 — Restart the daemon
+
+```bash
+docker compose up -d --force-recreate
+```
+
+### Step 4 — Confirm it's working
+
+```bash
+docker compose logs --tail 20 ps5-control
+```
+
+Within a few seconds you should see:
+
+```
+psn: bootstrapped tokens from npsso, persisted to /data/psn_tokens.json
+psn: resolved decimal account_id from /me
+psn_presence: enabled (poll every 30s)
+psn_presence: <game name> (PPSA...)
+```
+
+Within ~30 seconds, the Remote 3's media-player widget switches from the generic gamepad to the actual cover art for whatever's on screen. The daemon's `/state` endpoint also starts returning the real `app` and `app_id`.
+
+### Step 5 — Clear the npsso (optional, but recommended)
+
+Once the daemon log shows `psn: loaded saved tokens from /data/psn_tokens.json` on a fresh restart, the saved tokens are working. Edit `daemon/.env` and either:
+
+- Delete the `PSN_NPSSO_TOKEN=...` line, or
+- Set it to empty: `PSN_NPSSO_TOKEN=`
+
+Then `docker compose up -d --force-recreate`. The daemon uses the saved tokens going forward; your npsso doesn't sit on disk in `.env`. Tokens auto-refresh forever (~60-day rolling refresh chain).
+
+### Notes
+
+- **Streaming apps** (Netflix, Sky Go, etc.): PSN sometimes reports them, sometimes returns blank — Sony's behaviour for streaming is less consistent than for games. If `app` stays empty while you're in a streaming app, that's Sony, not the daemon.
+- **Privacy**: nothing leaves your home. The daemon talks directly to Sony's APIs; no third-party services involved.
+- **Re-auth**: if the daemon is offline for ~2 months and the refresh chain dies, paste a fresh npsso into `.env` again and restart. One re-auth at most every couple of months of complete inactivity.
+
 ## Use your own picture on the media-player widget (optional)
 
 By default, the Remote 3 shows a PS5 wordmark on the media-player widget when the PS5 is on the home screen (no game running). You can swap it for any picture you like — a screenshot, a piece of art, anything.
