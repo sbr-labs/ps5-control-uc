@@ -175,6 +175,15 @@ class PsnPresence:
     def _load_tokens_from_disk(self) -> bool:
         if not os.path.exists(self.token_path):
             return False
+        if os.path.isdir(self.token_path):
+            log.error(
+                "psn: %s exists as a DIRECTORY, not a file — Docker bind-mount "
+                "gotcha. Remove it (`rmdir %s` on the host) and recreate as an "
+                "empty JSON file (`echo '{}' > %s`), then restart the daemon. "
+                "Disabling PSN presence for now.",
+                self.token_path, self.token_path, self.token_path,
+            )
+            return False
         try:
             with open(self.token_path, "r") as f:
                 self._tokens = json.load(f)

@@ -104,6 +104,18 @@ say "Building daemon container..."
 docker compose build
 ok "Build OK."
 
+# Pre-create psn_tokens.json as an empty JSON file. If it doesn't exist
+# on the host before `docker compose up`, Docker's bind mount creates it
+# as a *directory* (known gotcha) which then breaks the daemon when it
+# tries to read/write it as a file. Pre-creating an empty {} fixes this.
+if [[ ! -f psn_tokens.json ]]; then
+  if [[ -d psn_tokens.json ]]; then
+    say "Removing stray psn_tokens.json directory left by Docker bind mount..."
+    rmdir psn_tokens.json 2>/dev/null || sudo rmdir psn_tokens.json
+  fi
+  echo '{}' > psn_tokens.json
+fi
+
 say "Starting daemon..."
 # Bring down any stale container first. If a previous install attempt left
 # `ps5-control` in stopped/exited state (Ctrl+C, crash loop, etc.), the

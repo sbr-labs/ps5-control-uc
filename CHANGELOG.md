@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-05-10
+
+### Fixed
+- **`IsADirectoryError` on first start.** Docker bind-mount creates a
+  non-existent `./psn_tokens.json` path as a *directory*, not an empty
+  file — the daemon then crashed when trying to read/write it. Both
+  `install.sh` and `update.sh` now pre-create `psn_tokens.json` as a
+  real file (and remove any stray directory left over from previous
+  runs) before bringing the container up. The daemon also detects the
+  bad state at startup and logs a clear "remove the directory" error
+  instead of erroring out, so PSN presence stays cleanly disabled
+  rather than crashing the daemon while you fix it.
+
 ## [0.5.4] - 2026-05-10
 
 ### Fixed

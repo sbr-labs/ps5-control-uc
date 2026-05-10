@@ -80,6 +80,17 @@ fi
 
 # --- 5. Rebuild + restart daemon ---------------------------------------------
 cd daemon
+# Pre-create psn_tokens.json as a real file (not a Docker-created directory).
+# Bind-mounting a non-existent file path makes Docker create it as a dir;
+# the daemon then errors with IsADirectoryError on first start. Existing
+# users who hit this in v0.5.0–v0.5.3 get a one-time fix here.
+if [[ -d psn_tokens.json ]]; then
+  warn "Removing stray psn_tokens.json directory created by Docker bind mount..."
+  rmdir psn_tokens.json 2>/dev/null || sudo rmdir psn_tokens.json
+fi
+if [[ ! -f psn_tokens.json ]]; then
+  echo '{}' > psn_tokens.json
+fi
 say "Rebuilding daemon container..."
 docker compose build
 say "Restarting daemon..."
