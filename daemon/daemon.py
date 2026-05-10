@@ -90,7 +90,7 @@ PSN_PRESENCE_POLL_S = int(os.environ.get("PSN_PRESENCE_POLL_S", "15"))
 # the loop wakes up immediately on every button press via the
 # _psn_wake event, so cover art typically updates within ~1s of any
 # button press regardless of this cadence.
-PSN_PRESENCE_FAST_POLL_S = int(os.environ.get("PSN_PRESENCE_FAST_POLL_S", "2"))
+PSN_PRESENCE_FAST_POLL_S = int(os.environ.get("PSN_PRESENCE_FAST_POLL_S", "8"))
 PSN_PRESENCE_ACTIVITY_WINDOW_S = int(os.environ.get("PSN_PRESENCE_ACTIVITY_WINDOW_S", "60"))
 PSN_TOKENS_PATH = os.environ.get("PSN_TOKENS_PATH", "/data/psn_tokens.json")
 

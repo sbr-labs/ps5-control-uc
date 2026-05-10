@@ -86,6 +86,16 @@ COVER_ART_PREFERENCE = tuple(
 # a stampede right at the boundary.
 REFRESH_LEEWAY_S = 120
 
+# Hard floor between fetch_presence() calls. Even if the daemon tries to
+# fetch 100 times in 10 seconds (e.g. a flurry of button presses), Sony
+# only sees one call every PSN_MIN_FETCH_INTERVAL_S. Caller gets the
+# cached result during the cooldown.
+PSN_MIN_FETCH_INTERVAL_S = float(os.environ.get("PSN_MIN_FETCH_INTERVAL_S", "5"))
+
+# Backoff schedule (seconds) when Sony returns 429. Each successive 429
+# advances one rung; first non-429 success resets back to 0.
+BACKOFF_SCHEDULE_S = (30, 60, 120, 300, 300)
+
 
 class PsnPresenceError(Exception):
     """PSN presence couldn't be fetched. Caller should fall back to DDP."""
@@ -99,6 +109,13 @@ class PsnPresence:
         await psn.start(npsso="<user-pasted-cookie-or-None>")
         # Then call psn.fetch_presence() periodically. It returns
         # {"app_name": "...", "app_id": "...", "image_url": "..."} or {}.
+
+    Rate-limit safety:
+    - PSN_MIN_FETCH_INTERVAL_S enforces a hard floor between calls so a
+      flurry of button presses can't hammer Sony.
+    - On 429 (Too Many Requests) we back off exponentially up to 5 min
+      and return the cached presence to the caller during the cooldown,
+      so the widget stays populated instead of going blank.
     """
 
     def __init__(
@@ -117,6 +134,11 @@ class PsnPresence:
         self._tokens: dict[str, Any] = {}
         self._session = session  # injected for tests; otherwise per-call
         self._lock = asyncio.Lock()  # serialise refreshes
+        # Rate-limit + backoff state.
+        self._last_presence_at: float = 0.0
+        self._cooldown_until: float = 0.0     # set when Sony 429s us
+        self._backoff_step: int = 0            # index into BACKOFF_SCHEDULE_S
+        self._cached_presence: dict[str, str] = {}  # last successful result
 
     # ---------- token lifecycle ----------
 
@@ -307,13 +329,26 @@ class PsnPresence:
         title on this account, or {} if not playing / not online / failed.
 
         Never raises — caller should treat {} as "fall back to DDP".
+
+        Rate-limit safety: enforces PSN_MIN_FETCH_INTERVAL_S between actual
+        Sony calls. During a 429 backoff window, returns the last cached
+        presence so the widget stays populated.
         """
+        now = time.time()
+        # Honour the active backoff window (set on 429).
+        if now < self._cooldown_until:
+            return dict(self._cached_presence)
+        # Honour the per-call min-interval.
+        if (now - self._last_presence_at) < PSN_MIN_FETCH_INTERVAL_S:
+            return dict(self._cached_presence)
+        self._last_presence_at = now
+
         try:
             token = await self._ensure_access_token()
             account_id = await self._ensure_account_id(token)
         except Exception as exc:
             log.warning("psn: setup failed: %s", exc)
-            return {}
+            return dict(self._cached_presence)
         params = {
             "type": "primary",
             "accountIds": account_id,
@@ -324,14 +359,28 @@ class PsnPresence:
         try:
             async with self._http() as sess:
                 async with sess.get(PRESENCE_URL, params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status != 200:
+                    status = resp.status
+                    if status == 429:
+                        # Sony rate-limited us. Set an exponential backoff
+                        # and return the cached presence so the widget
+                        # doesn't go blank during the cooldown.
+                        wait_s = BACKOFF_SCHEDULE_S[min(self._backoff_step, len(BACKOFF_SCHEDULE_S) - 1)]
+                        self._cooldown_until = time.time() + wait_s
+                        self._backoff_step = min(self._backoff_step + 1, len(BACKOFF_SCHEDULE_S) - 1)
+                        log.warning(
+                            "psn: rate-limited by Sony — backing off %ss before next fetch "
+                            "(serving cached presence in the meantime)", wait_s)
+                        return dict(self._cached_presence)
+                    if status != 200:
                         body = await resp.text()
-                        log.warning("psn: presence fetch %s: %s", resp.status, body[:200])
-                        return {}
+                        log.warning("psn: presence fetch %s: %s", status, body[:200])
+                        return dict(self._cached_presence)
+                    # Successful call — reset backoff progression.
+                    self._backoff_step = 0
                     data = await resp.json()
         except Exception as exc:
             log.warning("psn: presence request failed: %s", exc)
-            return {}
+            return dict(self._cached_presence)
         result = _parse_presence(data, self.account_id)
         # Sony's basicPresences sometimes returns image_url=""; fall back to
         # the catalog endpoint when we have a title_id but no image. Cached
@@ -340,6 +389,9 @@ class PsnPresence:
             cover = await self._fetch_cover_art(result["app_id"])
             if cover:
                 result["image_url"] = cover
+        # Cache the latest successful result so it can be served during
+        # backoff windows / inter-call cooldowns.
+        self._cached_presence = dict(result)
         return result
 
     async def _fetch_cover_art(self, title_id: str) -> str:

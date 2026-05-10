@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-05-10
+
+### Fixed
+- **Rate-limit regression from 0.5.3.** Instant-fetch-on-button-press +
+  2s fast-poll caused Sony to return HTTP 429, blanking the widget.
+  Now: hard min-fetch interval (`PSN_MIN_FETCH_INTERVAL_S`, default
+  5s) and exponential backoff (30 s → 5 min) when 429 is seen.
+  Cached presence served during cooldowns so the widget never goes
+  blank. Fast-poll cadence raised from 2 s to 8 s to stay under
+  Sony's threshold.
+- Driver-side `/state` poll lowered from 10 s to 4 s for snappier
+  widget updates after the daemon notices a title change. Requires
+  re-uploading the integration tarball to the Remote 3 to take
+  effect (existing v0.5.x integrations keep working at the old
+  interval if you don't re-upload).
+
 ## [0.5.3] - 2026-05-10
 
 ### Changed
