@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-05-10
+
+### Changed
+- **Cover art appears faster.** Default presence-poll interval lowered
+  from 30 s to 15 s, plus a new activity-aware mode: when a button has
+  been pressed within the last 60 s, the daemon polls every 5 s
+  instead of every 15 s. Knobs: `PSN_PRESENCE_POLL_S` (idle),
+  `PSN_PRESENCE_FAST_POLL_S`, `PSN_PRESENCE_ACTIVITY_WINDOW_S`.
+- **Cover art preference reordered.** `SIXTEEN_BY_NINE_BANNER` is now
+  the top choice over `GAMEHUB_COVER_ART` — Sony's banner art is
+  composed for widescreen widget tiles and tends to fill the Remote 3
+  media-player widget without letterboxing. The cached cover for
+  already-fetched titles will refresh the next time the title changes.
+
 ## [0.5.1] - 2026-05-10
 
 ### Changed

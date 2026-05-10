@@ -81,7 +81,14 @@ KEEPALIVE_S = int(os.environ.get("KEEPALIVE", "30"))
 # get the currently-playing title + cover art. Tokens persisted under
 # /data/psn_tokens.json so the user only pastes the npsso once.
 PSN_NPSSO_TOKEN = os.environ.get("PSN_NPSSO_TOKEN", "").strip()
-PSN_PRESENCE_POLL_S = int(os.environ.get("PSN_PRESENCE_POLL_S", "30"))
+# Idle poll cadence (no recent button activity). 15s is well under Sony's
+# rate limit and catches game switches within ~half a minute.
+PSN_PRESENCE_POLL_S = int(os.environ.get("PSN_PRESENCE_POLL_S", "15"))
+# Fast poll cadence when a button has been pressed in the last
+# PSN_PRESENCE_ACTIVITY_WINDOW_S seconds — user is interacting, so we
+# refresh more aggressively so cover art keeps up with menu nav.
+PSN_PRESENCE_FAST_POLL_S = int(os.environ.get("PSN_PRESENCE_FAST_POLL_S", "5"))
+PSN_PRESENCE_ACTIVITY_WINDOW_S = int(os.environ.get("PSN_PRESENCE_ACTIVITY_WINDOW_S", "60"))
 PSN_TOKENS_PATH = os.environ.get("PSN_TOKENS_PATH", "/data/psn_tokens.json")
 
 logging.basicConfig(
@@ -557,7 +564,12 @@ async def psn_presence_loop(controller: "PS5Controller", psn: "PsnPresence") -> 
     """Background task that polls Sony's PSN basicPresences endpoint and
     caches the currently-playing title on the controller. Fills in the
     metadata that DDP no longer reports on firmware 13.x. Falls back
-    gracefully if Sony returns nothing (controller's PSN cache emptied)."""
+    gracefully if Sony returns nothing (controller's PSN cache emptied).
+
+    Activity-aware: when a button has been pressed within
+    PSN_PRESENCE_ACTIVITY_WINDOW_S, we poll on the FAST cadence so the
+    cover art catches up quickly while the user is interacting. Otherwise
+    we fall back to the slower idle cadence to spare Sony's API."""
     last_title: Optional[str] = None
     while True:
         try:
@@ -572,7 +584,9 @@ async def psn_presence_loop(controller: "PS5Controller", psn: "PsnPresence") -> 
                 last_title = title
         except Exception:
             log.exception("psn_presence_loop error")
-        await asyncio.sleep(PSN_PRESENCE_POLL_S)
+        now = asyncio.get_event_loop().time()
+        recent_activity = (now - controller._last_activity) < PSN_PRESENCE_ACTIVITY_WINDOW_S
+        await asyncio.sleep(PSN_PRESENCE_FAST_POLL_S if recent_activity else PSN_PRESENCE_POLL_S)
 
 
 async def keepalive_loop(controller: "PS5Controller") -> None:

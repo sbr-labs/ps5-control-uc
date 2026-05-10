@@ -64,10 +64,15 @@ CATALOG_URL_TEMPLATE = (
     "https://m.np.playstation.com/api/catalog/v2/titles/{title_id}/concepts"
 )
 # media.images[].type ranked best→worst for the Remote 3's 16:9 widget.
+# SIXTEEN_BY_NINE_BANNER is Sony's banner art explicitly intended for widescreen
+# widget tiles — prefer it for the cleanest fit on the Remote 3. GAMEHUB_COVER_ART
+# is the game-hub page key art (also 16:9 but composition is tuned for a larger
+# canvas; sometimes letterboxes in a small widget).
 COVER_ART_PREFERENCE = (
-    "GAMEHUB_COVER_ART",  # 16:9 cover, ideal fit
+    "SIXTEEN_BY_NINE_BANNER",
+    "GAMEHUB_COVER_ART",
+    "MASTER",
     "FOUR_BY_THREE_BANNER",
-    "MASTER_KEY_ART",
     "PORTRAIT_BANNER",
 )
 
