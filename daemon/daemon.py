@@ -86,8 +86,11 @@ PSN_NPSSO_TOKEN = os.environ.get("PSN_NPSSO_TOKEN", "").strip()
 PSN_PRESENCE_POLL_S = int(os.environ.get("PSN_PRESENCE_POLL_S", "15"))
 # Fast poll cadence when a button has been pressed in the last
 # PSN_PRESENCE_ACTIVITY_WINDOW_S seconds — user is interacting, so we
-# refresh more aggressively so cover art keeps up with menu nav.
-PSN_PRESENCE_FAST_POLL_S = int(os.environ.get("PSN_PRESENCE_FAST_POLL_S", "5"))
+# refresh more aggressively so cover art keeps up with menu nav. Plus
+# the loop wakes up immediately on every button press via the
+# _psn_wake event, so cover art typically updates within ~1s of any
+# button press regardless of this cadence.
+PSN_PRESENCE_FAST_POLL_S = int(os.environ.get("PSN_PRESENCE_FAST_POLL_S", "2"))
 PSN_PRESENCE_ACTIVITY_WINDOW_S = int(os.environ.get("PSN_PRESENCE_ACTIVITY_WINDOW_S", "60"))
 PSN_TOKENS_PATH = os.environ.get("PSN_TOKENS_PATH", "/data/psn_tokens.json")
 
@@ -162,6 +165,11 @@ class PS5Controller:
         # PSN_PRESENCE_POLL_S seconds. Empty dict when presence is
         # disabled or Sony reports nothing playing.
         self._psn_presence: dict[str, str] = {}
+        # Set by the button handler so the presence loop wakes up
+        # immediately and re-fetches Sony's "currently playing" — gives
+        # near-instant cover-art updates whenever the user is pressing
+        # buttons (e.g. game-launch sequence).
+        self._psn_wake = asyncio.Event()
 
     def refresh_status(self) -> dict:
         return self.device.get_status() or {}
@@ -421,6 +429,9 @@ def make_app(controller: PS5Controller) -> web.Application:
         if action not in VALID_ACTIONS:
             action = "tap"
         ok = await controller.button(btn, action)
+        # Wake the PSN presence loop so cover art catches up immediately
+        # (e.g. when the user is launching a new game from the home screen).
+        controller._psn_wake.set()
         return web.json_response({"ok": ok, "button": btn, "action": action})
 
     async def handle_wakeup(req: web.Request) -> web.Response:
@@ -586,7 +597,14 @@ async def psn_presence_loop(controller: "PS5Controller", psn: "PsnPresence") -> 
             log.exception("psn_presence_loop error")
         now = asyncio.get_event_loop().time()
         recent_activity = (now - controller._last_activity) < PSN_PRESENCE_ACTIVITY_WINDOW_S
-        await asyncio.sleep(PSN_PRESENCE_FAST_POLL_S if recent_activity else PSN_PRESENCE_POLL_S)
+        sleep_s = PSN_PRESENCE_FAST_POLL_S if recent_activity else PSN_PRESENCE_POLL_S
+        # Either sleep for the cadence, OR break out early if a button
+        # press woke us. Whichever fires first ends the wait.
+        try:
+            await asyncio.wait_for(controller._psn_wake.wait(), timeout=sleep_s)
+        except asyncio.TimeoutError:
+            pass
+        controller._psn_wake.clear()
 
 
 async def keepalive_loop(controller: "PS5Controller") -> None:

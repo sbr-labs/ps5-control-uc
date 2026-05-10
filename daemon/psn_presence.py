@@ -63,17 +63,23 @@ PRESENCE_URL = (
 CATALOG_URL_TEMPLATE = (
     "https://m.np.playstation.com/api/catalog/v2/titles/{title_id}/concepts"
 )
-# media.images[].type ranked best→worst for the Remote 3's 16:9 widget.
-# SIXTEEN_BY_NINE_BANNER is Sony's banner art explicitly intended for widescreen
-# widget tiles — prefer it for the cleanest fit on the Remote 3. GAMEHUB_COVER_ART
-# is the game-hub page key art (also 16:9 but composition is tuned for a larger
-# canvas; sometimes letterboxes in a small widget).
-COVER_ART_PREFERENCE = (
-    "SIXTEEN_BY_NINE_BANNER",
-    "GAMEHUB_COVER_ART",
-    "MASTER",
+# media.images[].type ranked best→worst for the Remote 3's media-player
+# widget. The widget appears closer to square than 16:9 in practice, so
+# MASTER (1024×1024 square key art) usually fills better than the
+# widescreen banners which letterbox top+bottom. Override via the
+# PSN_COVER_ART_PREFERENCE env var if your widget is configured wider.
+_DEFAULT_COVER_ART_PREFERENCE = (
+    "SIXTEEN_BY_NINE_BANNER",  # 3840×2160, widest aspect Sony offers
+    "GAMEHUB_COVER_ART",       # 3840×2160 alternative 16:9
     "FOUR_BY_THREE_BANNER",
+    "MASTER",
     "PORTRAIT_BANNER",
+)
+COVER_ART_PREFERENCE = tuple(
+    a.strip()
+    for a in (os.environ.get("PSN_COVER_ART_PREFERENCE")
+              or ",".join(_DEFAULT_COVER_ART_PREFERENCE)).split(",")
+    if a.strip()
 )
 
 # Refresh access token this many seconds before its actual expiry to avoid
@@ -140,6 +146,10 @@ class PsnPresence:
         )
         return False
 
+    # Bump this when the cover-art preference order changes, to force a
+    # one-time refetch of cached covers under the new ordering.
+    COVER_CACHE_SCHEMA_VERSION = 2
+
     def _load_tokens_from_disk(self) -> bool:
         if not os.path.exists(self.token_path):
             return False
@@ -152,6 +162,16 @@ class PsnPresence:
             cached = self._tokens.get("account_id")
             if cached and (not self.account_id or not self.account_id.isdigit()):
                 self.account_id = str(cached)
+            # Invalidate cover_cache if it was populated under an older
+            # preference order — forces a refetch using the current ranking.
+            saved_schema = self._tokens.get("cover_cache_schema_version", 0)
+            if saved_schema < self.COVER_CACHE_SCHEMA_VERSION:
+                if self._tokens.get("cover_cache"):
+                    log.info("psn: cover_cache schema bump %s → %s, clearing cached covers",
+                             saved_schema, self.COVER_CACHE_SCHEMA_VERSION)
+                    self._tokens["cover_cache"] = {}
+                self._tokens["cover_cache_schema_version"] = self.COVER_CACHE_SCHEMA_VERSION
+                self._save_tokens()
             return True
         except Exception:
             log.exception("psn: failed reading %s — treating as missing", self.token_path)
@@ -346,7 +366,7 @@ class PsnPresence:
         for preferred in COVER_ART_PREFERENCE:
             for img in images:
                 if img.get("type") == preferred and img.get("url"):
-                    cover = str(img["url"])
+                    cover = _hint_size(str(img["url"]))
                     cache[title_id] = cover
                     self._save_tokens()  # persist cache for next run
                     log.info("psn: catalog cover %s → %s", preferred, cover)
@@ -354,7 +374,7 @@ class PsnPresence:
         # Fall back to ANY image so we get something rather than nothing.
         for img in images:
             if img.get("url"):
-                cover = str(img["url"])
+                cover = _hint_size(str(img["url"]))
                 cache[title_id] = cover
                 self._save_tokens()
                 return cover
@@ -369,6 +389,16 @@ class PsnPresence:
             # without closing it. Trivial implementation:
             return _NoCloseSession(self._session)
         return aiohttp.ClientSession()
+
+
+def _hint_size(url: str) -> str:
+    """Append Sony's CDN size hint so we hand the Remote 3 a 1920×1080
+    image instead of the raw 4K source. The Remote 3 firmware seems to
+    render the 4K versions at a smaller fixed size — asking for 1080p
+    explicitly tends to produce a sharper, larger-looking widget."""
+    if "?" in url or "image.api.playstation.com" not in url:
+        return url
+    return f"{url}?w=1920"
 
 
 class _NoCloseSession:

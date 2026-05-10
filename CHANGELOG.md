@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-05-10
+
+### Changed
+- **Cover art now updates within ~1 second of any button press.** The
+  presence loop wakes up immediately on every `/button` call (via an
+  asyncio event) instead of waiting for the next poll cadence.
+- Fast-poll cadence further reduced from 5 s to 2 s for the active
+  window after a button press.
+- **Sony CDN size hint added (`?w=1920`)** to the cover-art URL — a
+  1080p render tends to display larger / sharper on the Remote 3
+  than the 4K original.
+- Cover-art cache schema bumped — covers fetched under the old
+  preference order will be re-fetched once after this update.
+
+### Added
+- `PSN_COVER_ART_PREFERENCE` env var — comma-separated list of Sony's
+  image types in fallback order. Default
+  `SIXTEEN_BY_NINE_BANNER,GAMEHUB_COVER_ART,FOUR_BY_THREE_BANNER,MASTER,PORTRAIT_BANNER`.
+  Override if your widget is shaped differently from default.
+
 ## [0.5.2] - 2026-05-10
 
 ### Changed
