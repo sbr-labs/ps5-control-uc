@@ -1,0 +1,83 @@
+name: build and publish docker image
+
+# Builds the daemon container on every tag push, publishes to
+# ghcr.io/<owner>/<repo>:vX.Y.Z and :latest. Multi-arch (amd64 + arm64).
+#
+# How to release a new image:
+#   1. Bump CHANGELOG.md + create a tag locally:
+#        git tag -a v0.5.0 -m "..."
+#   2. Push the tag:
+#        git push origin v0.5.0
+#   3. This workflow auto-runs, build takes ~5-7 min, image lives at
+#        ghcr.io/sbr-labs/ps5-control-uc:v0.5.0
+#        ghcr.io/sbr-labs/ps5-control-uc:latest
+#
+# Manual run is also supported via the Actions tab → "Run workflow"
+# (useful for re-publishing :latest if needed).
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "tag to (re)publish (e.g. v0.5.0). Defaults to current HEAD."
+        required: false
+
+permissions:
+  contents: read
+  packages: write   # needed to push to ghcr.io under the same org
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository }}   # e.g. sbr-labs/ps5-control-uc
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: set up qemu (for arm64 emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: set up docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: derive image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+          labels: |
+            org.opencontainers.image.title=ps5-control daemon
+            org.opencontainers.image.description=PS5 Remote Play HTTP control daemon
+            org.opencontainers.image.licenses=MIT
+
+      - name: build and push (linux/amd64, linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./daemon
+          file: ./daemon/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # GitHub Actions cache so re-builds within 7 days are fast.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

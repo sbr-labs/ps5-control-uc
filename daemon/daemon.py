@@ -32,6 +32,8 @@ from aiohttp import web
 from pyremoteplay import RPDevice
 from pyremoteplay.profile import Profiles
 
+from psn_presence import PsnPresence
+
 # ---------- Config from env ----------
 
 PS5_HOST     = os.environ.get("PS5_HOST", "")
@@ -72,40 +74,15 @@ PREWARM = os.environ.get("PREWARM", "1") == "1"
 # Health check interval to keep session alive + detect PS5 going to rest.
 KEEPALIVE_S = int(os.environ.get("KEEPALIVE", "30"))
 
-# DRM-protected streaming apps that refuse to play while a Remote Play
-# session is connected to the PS5. When one of these apps is in the
-# foreground, the daemon tears down the RP session and pauses
-# auto-reconnect so the user can actually watch. Comma-separated env
-# override: DRM_APPS="Netflix,Sky Go,My Custom App". Match is
-# case-insensitive substring.
-_DEFAULT_DRM_APPS = (
-    "Netflix",
-    "Disney+", "Disney Plus",
-    "Apple TV", "Apple TV+",
-    "Prime Video", "Amazon Prime Video",
-    "HBO Max", "Max",
-    "BBC iPlayer",
-    "ITVX", "ITV Hub",
-    "NOW", "NOW TV",
-    "Sky Go", "Sky Stream", "Sky Sports", "Sky News",
-    "YouTube", "YouTube TV",
-    "Crunchyroll",
-    "Paramount+", "Paramount Plus",
-    "Discovery+", "Discovery Plus",
-    "Twitch",
-    "Spotify",
-    "Plex", "Jellyfin", "Emby",
-)
-DRM_APPS = tuple(
-    a.strip()
-    for a in (
-        os.environ.get("DRM_APPS")
-        or ",".join(_DEFAULT_DRM_APPS)
-    ).split(",")
-    if a.strip()
-)
-DRM_PAUSE_S = int(os.environ.get("DRM_PAUSE_S", "300"))
-DRM_CHECK_S = int(os.environ.get("DRM_CHECK_S", "5"))
+# PSN presence — fills in the running-app metadata that Sony stripped from
+# the PS5's DDP broadcast in firmware 13.x. When PSN_NPSSO_TOKEN is set
+# (one-time paste from https://ca.account.sony.com/api/v1/ssocookie, signed
+# in), the daemon queries Sony's PSN REST API every PSN_PRESENCE_POLL_S to
+# get the currently-playing title + cover art. Tokens persisted under
+# /data/psn_tokens.json so the user only pastes the npsso once.
+PSN_NPSSO_TOKEN = os.environ.get("PSN_NPSSO_TOKEN", "").strip()
+PSN_PRESENCE_POLL_S = int(os.environ.get("PSN_PRESENCE_POLL_S", "30"))
+PSN_TOKENS_PATH = os.environ.get("PSN_TOKENS_PATH", "/data/psn_tokens.json")
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -174,6 +151,10 @@ class PS5Controller:
         # When > now, keepalive won't re-establish a torn-down session.
         # Used by /disconnect?pause=N so user can use PS5 settings.
         self._pause_until: float = 0.0
+        # PSN presence cache — populated by psn_presence_loop() every
+        # PSN_PRESENCE_POLL_S seconds. Empty dict when presence is
+        # disabled or Sony reports nothing playing.
+        self._psn_presence: dict[str, str] = {}
 
     def refresh_status(self) -> dict:
         return self.device.get_status() or {}
@@ -184,26 +165,29 @@ class PS5Controller:
 
     @property
     def app_name(self) -> Optional[str]:
+        # Prefer PSN presence when available — DDP returns empty for
+        # third-party apps and most titles since firmware 13.x.
+        psn = self._psn_presence.get("app_name")
+        if psn:
+            return psn
         s = self.device.status or {}
         return s.get("running-app-name") or None
 
     @property
     def app_id(self) -> Optional[str]:
+        psn = self._psn_presence.get("app_id")
+        if psn:
+            return psn
         s = self.device.status or {}
         return s.get("running-app-titleid") or None
 
     @property
-    def is_drm_app(self) -> bool:
-        """True if the foreground app is a DRM-protected streaming app
-        that won't play while a Remote Play session is connected."""
-        name = self.app_name
-        if not name:
-            return False
-        n = name.lower()
-        return any(d.lower() in n or n in d.lower() for d in DRM_APPS)
-
-    @property
     def app_image(self) -> Optional[str]:
+        # PSN cover art (from catalog endpoint) takes priority — works
+        # even without an active Remote Play session.
+        psn = self._psn_presence.get("image_url")
+        if psn:
+            return psn
         try:
             mi = self.device.media_info
             if mi and mi.cover_art:
@@ -569,38 +553,26 @@ def make_app(controller: PS5Controller) -> web.Application:
 
 # ---------- Main ----------
 
-async def drm_watcher_loop(controller: "PS5Controller") -> None:
-    """Background task that watches the foreground app and tears down
-    the Remote Play session when a DRM-protected streaming app is open
-    (Netflix, HBO Max, Disney+, NOW, BBC iPlayer, etc.). Those apps
-    refuse to play while an RP session is connected to the PS5. After
-    teardown we set _pause_until so button presses won't auto-reconnect
-    until the user explicitly hits /reconnect or switches app."""
-    last_logged: Optional[str] = None
+async def psn_presence_loop(controller: "PS5Controller", psn: "PsnPresence") -> None:
+    """Background task that polls Sony's PSN basicPresences endpoint and
+    caches the currently-playing title on the controller. Fills in the
+    metadata that DDP no longer reports on firmware 13.x. Falls back
+    gracefully if Sony returns nothing (controller's PSN cache emptied)."""
+    last_title: Optional[str] = None
     while True:
         try:
-            controller.refresh_status()
-            if controller.is_on and controller.is_drm_app:
-                name = controller.app_name
-                now = asyncio.get_event_loop().time()
-                # Always extend the pause while the DRM app stays in focus
-                # so a button press doesn't sneak a reconnect mid-stream.
-                controller._pause_until = now + DRM_PAUSE_S
-                if controller.has_session:
-                    log.info("drm_watcher: %s detected — disconnecting session", name)
-                    await controller.disconnect()
-                if last_logged != name:
-                    log.info("drm_watcher: paused for %s (use Remote 3 'reconnect' "
-                             "or DualSense to control PS5)", name)
-                    last_logged = name
-            else:
-                if last_logged is not None:
-                    log.info("drm_watcher: foreground no longer DRM — clearing pause")
-                    controller._pause_until = 0.0
-                    last_logged = None
+            result = await psn.fetch_presence()
+            controller._psn_presence = result
+            title = result.get("app_id") or None
+            if title != last_title:
+                if title:
+                    log.info("psn_presence: %s (%s)", result.get("app_name"), title)
+                else:
+                    log.info("psn_presence: nothing playing")
+                last_title = title
         except Exception:
-            log.exception("drm_watcher error")
-        await asyncio.sleep(DRM_CHECK_S)
+            log.exception("psn_presence_loop error")
+        await asyncio.sleep(PSN_PRESENCE_POLL_S)
 
 
 async def keepalive_loop(controller: "PS5Controller") -> None:
@@ -665,7 +637,22 @@ async def amain() -> None:
             log.exception("prewarm check error")
 
     keepalive_task = asyncio.create_task(keepalive_loop(controller))
-    drm_task = asyncio.create_task(drm_watcher_loop(controller))
+
+    # PSN presence — start ONLY if we either have a saved tokens file or
+    # the user has supplied an npsso. If neither, leave it disabled; the
+    # daemon still works (just without game cover art on the widget).
+    psn: Optional["PsnPresence"] = None
+    presence_task: Optional[asyncio.Task] = None
+    if PSN_NPSSO_TOKEN or os.path.exists(PSN_TOKENS_PATH):
+        psn = PsnPresence(token_path=PSN_TOKENS_PATH)
+        if await psn.start(npsso=PSN_NPSSO_TOKEN or None):
+            presence_task = asyncio.create_task(psn_presence_loop(controller, psn))
+            log.info("psn_presence: enabled (poll every %ss)", PSN_PRESENCE_POLL_S)
+        else:
+            psn = None
+            log.warning("psn_presence: disabled (start failed — see psn: lines above)")
+    else:
+        log.info("psn_presence: disabled (no PSN_NPSSO_TOKEN and no saved tokens at %s)", PSN_TOKENS_PATH)
 
     stop = asyncio.Event()
     loop = asyncio.get_event_loop()
@@ -675,7 +662,8 @@ async def amain() -> None:
 
     log.info("Shutting down")
     keepalive_task.cancel()
-    drm_task.cancel()
+    if presence_task:
+        presence_task.cancel()
     await controller.disconnect()
     await runner.cleanup()
 

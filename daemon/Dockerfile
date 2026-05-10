@@ -8,7 +8,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY daemon.py default-home-image.svg ./
+COPY daemon.py psn_presence.py default-home-image.png ./
 
 # /data is mounted from host with credentials.json
 VOLUME /data

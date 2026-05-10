@@ -25,5 +25,14 @@ services:
       #   - or HOME_IMAGE_FILE=/path/in/container to a mounted file.
       HOME_IMAGE_URL:  "${HOME_IMAGE_URL:-}"
       HOME_IMAGE_FILE: "${HOME_IMAGE_FILE:-/app/default-home-image.png}"
+      # PSN presence — paste your npsso (from https://ca.account.sony.com
+      # /api/v1/ssocookie, signed in) on first start. Daemon exchanges it
+      # for OAuth tokens persisted in /data/psn_tokens.json. After that
+      # you can clear this and the saved tokens take over. Leave empty
+      # to disable presence-based cover art / current-title detection.
+      PSN_NPSSO_TOKEN:  "${PSN_NPSSO_TOKEN:-}"
+      PSN_TOKENS_PATH:  "${PSN_TOKENS_PATH:-/data/psn_tokens.json}"
     volumes:
       - ./credentials.json:/data/credentials.json:ro
+      # Persistent token storage so the npsso paste survives container restarts.
+      - ./psn_tokens.json:/data/psn_tokens.json

@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-10
+
+### Added
+- **Live game cover art via PSN presence (opt-in).** PS5 firmware
+  13.x stripped the running-app metadata from the local DDP
+  broadcast, so the daemon's `app_name` / `app_id` had been empty
+  regardless of what was playing. This release adds an optional PSN
+  REST client that fills that gap directly from Sony's "currently
+  playing" endpoint — same data source the PS App mobile app uses.
+  Set `PSN_NPSSO_TOKEN` in `daemon/.env` (one-time paste from
+  https://ca.account.sony.com/api/v1/ssocookie while signed in), and
+  the daemon exchanges it for OAuth tokens persisted at
+  `/data/psn_tokens.json`. After that the npsso can be cleared;
+  tokens auto-refresh forever (~60-day rolling refresh chain).
+- **Catalog cover-art fallback** — when Sony's presence response
+  omits the cover URL for a title, the daemon queries the public PSN
+  catalog endpoint to fetch the 16:9 GAMEHUB_COVER_ART. Per-title
+  cache so it's one extra HTTP call per title change.
+- **Docker image now published to ghcr.io** on every tag push, for
+  users running the daemon in Kubernetes or other registry-based
+  workflows. New GitHub Actions workflow (`build-and-publish.yml`)
+  builds multi-arch (`linux/amd64,linux/arm64`) and tags as
+  `ghcr.io/sbr-labs/ps5-control-uc:vX.Y.Z` and `:latest`. K8s users
+  can now `image: ghcr.io/sbr-labs/ps5-control-uc:v0.5.0` in a
+  Deployment manifest instead of cloning and building locally. The
+  existing `git clone + docker compose up` flow still works as
+  before — registry image is an alternative, not a replacement.
+
+### Changed
+- `/state` now returns real `app` / `app_id` / `image_url` whenever
+  PSN presence is enabled. Falls back to DDP when presence is
+  disabled or no PSN tokens are available — existing users without
+  an npsso see no change in behaviour.
+
+### Removed
+- DRM auto-disconnect watcher (added in v0.4.24). After real-world
+  testing, only Sky Go and HBO Max actually require tearing down
+  Remote Play to play; auto-disconnecting on a long list of apps
+  was solving a non-problem. The `/disconnect?pause=N` and
+  `/reconnect` HTTP endpoints remain — use them in a Remote 3
+  activity or HA script for the streaming apps that genuinely need
+  it. Manual control gives a much more predictable UX than the
+  watcher (which would silently stop the Remote 3 buttons working
+  when you opened Netflix).
+
 ## [0.4.28] - 2026-05-09
 
 ### Changed
