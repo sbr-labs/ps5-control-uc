@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2026-05-11
+
+### Fixed
+- Broadened the `_save_tokens()` fallback catch from four specific
+  errnos to any `OSError` on the rename step. Verified by Docker
+  test that real errors (read-only fs, permissions) still surface
+  from the direct-write fallback — nothing silently swallowed.
+  Single-file bind-mount EBUSY case (v0.5.5 → 0.5.6) end-to-end
+  confirmed before push.
+
 ## [0.5.6] - 2026-05-11
 
 ### Fixed

@@ -218,15 +218,15 @@ class PsnPresence:
             os.replace(tmp, self.token_path)
             return
         except OSError as e:
-            # Docker single-file bind mounts can't be replaced via rename
-            # (EBUSY / EBADF / ETXTBSY — the bind-mount holds the inode).
-            # Fall back to writing directly to the target. Loses the
-            # crash-mid-write protection but works on every Docker setup.
-            import errno as _e
-            recoverable = (_e.EBUSY, _e.EBADF, _e.ETXTBSY, _e.EXDEV)
-            if getattr(e, "errno", None) not in recoverable:
-                raise
-            log.debug("psn: atomic rename failed (errno=%s) — direct write fallback", e.errno)
+            # Any failure on the rename step falls through to a direct
+            # write. Most common cause: Docker single-file bind mounts
+            # (the bind-mount holds the inode, returning EBUSY/EBADF/
+            # ETXTBSY/EXDEV across kernels). Broad catch covers exotic
+            # bind-mount / overlay / shared-fs setups too. Any genuine
+            # error (disk full, no permissions) re-surfaces from the
+            # direct write below, so nothing is silently swallowed.
+            log.debug("psn: atomic rename failed (errno=%s: %s) — direct write fallback",
+                      getattr(e, "errno", "?"), e)
             try:
                 os.remove(tmp)
             except OSError:
