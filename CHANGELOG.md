@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2026-05-11
+
+### Fixed
+- **`EBUSY: Device or resource busy` when saving PSN tokens** on
+  standalone `docker compose` setups. The atomic write pattern
+  (write `.tmp` → rename onto target) fails on Docker single-file
+  bind mounts — the bind-mount holds the inode of the target, so
+  `os.replace()` errors with EBUSY (or EBADF / ETXTBSY / EXDEV
+  depending on platform). v0.5.6 catches those errnos and falls
+  back to a direct write so npsso bootstrap actually persists
+  tokens to disk on every Docker setup. Loses the crash-mid-write
+  protection of the atomic pattern, but the race window is narrow
+  enough that this is the right trade.
+
 ## [0.5.5] - 2026-05-10
 
 ### Fixed

@@ -210,11 +210,29 @@ class PsnPresence:
 
     def _save_tokens(self) -> None:
         os.makedirs(os.path.dirname(self.token_path) or ".", exist_ok=True)
-        # Persist to a temp file then rename — survives a crash mid-write.
+        # Try the atomic write (tmp + rename) first — crash-safe.
         tmp = self.token_path + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(self._tokens, f)
-        os.replace(tmp, self.token_path)
+        try:
+            with open(tmp, "w") as f:
+                json.dump(self._tokens, f)
+            os.replace(tmp, self.token_path)
+            return
+        except OSError as e:
+            # Docker single-file bind mounts can't be replaced via rename
+            # (EBUSY / EBADF / ETXTBSY — the bind-mount holds the inode).
+            # Fall back to writing directly to the target. Loses the
+            # crash-mid-write protection but works on every Docker setup.
+            import errno as _e
+            recoverable = (_e.EBUSY, _e.EBADF, _e.ETXTBSY, _e.EXDEV)
+            if getattr(e, "errno", None) not in recoverable:
+                raise
+            log.debug("psn: atomic rename failed (errno=%s) — direct write fallback", e.errno)
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            with open(self.token_path, "w") as f:
+                json.dump(self._tokens, f)
 
     async def _bootstrap_from_npsso(self, npsso: str) -> None:
         """npsso → authorization_code → access_token + refresh_token."""
